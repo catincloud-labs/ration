@@ -70,4 +70,5 @@ Autoclose: none
 - [ ] Branched off `main`, not committed to it directly
 - [ ] The README still describes what the suite decides
 - [ ] Any new contract property ships with an implementation that violates it
-- [ ] Exactly one `deploy:` label, required; a `review:` clock, applied by hand and read by no guard. Applying a label takes triage access, so from a fork leave this unticked: `pr-hygiene`'s label step reads red until the maintainer labels the pull request, and that red is expected.
+- [ ] Exactly one `deploy:` label, required; a `review:` clock, applied by hand and read by no guard.
+- [ ] In this repository that label is usually `deploy:none`, because a merge here deploys nothing; which value fits is in each label's description (`AGENTS.md`, *Change workflow*). Applying a label takes triage access, so from a fork leave both boxes unticked: `pr-hygiene`'s label step reads red until the maintainer labels the pull request, and that red is expected.
