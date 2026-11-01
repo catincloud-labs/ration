@@ -691,14 +691,35 @@ failure about a store that had been back the whole time.
 
 ## Versions and releases
 
-**No release has been cut**: install from a checkout, as below. A release is a
-signed `v*` tag and the GitHub release `.github/workflows/release.yml` creates
-from it, after verifying the tag's SSH signature against
-`.github/allowed_signers` and running the suite at the tagged commit. The same
-workflow runs the verifier on tags built wrong on purpose (unsigned,
-lightweight, a gpg signature, signed by another key, a signature moved from
-another tag, no summary line) and fails unless each is refused, on every pull
-request and before every release.
+**Releases are listed at <https://github.com/catincloud-labs/ration/releases>,
+and the first is
+[`v0.1.0`](https://github.com/catincloud-labs/ration/releases/tag/v0.1.0).**
+Install a release from a clone at its tag, then as in *Running it*, below; for
+another release, put its tag in place of `v0.1.0`:
+
+```sh
+git clone https://github.com/catincloud-labs/ration.git
+cd ration
+git switch --detach v0.1.0
+```
+
+A clone at a tag holds this README as it stood at that tag. The one at
+`v0.1.0` still says no release had been cut, which is what it said before the
+tag existed; `CHANGELOG.md` at `main` records that sentence and when it died.
+
+A release carries no files of its own. The source archives GitHub attaches to
+every release hold no `.git`, so the tag cannot be checked from one; use the
+clone. A release is a signed `v*` tag and the GitHub release
+`.github/workflows/release.yml` creates from it, after verifying the tag's SSH
+signature against `.github/allowed_signers`, reading the tag's name as exactly
+`v` and the version `pyproject.toml` carries at the tagged commit, and running
+the suite there. The same workflow runs both checks on tags built wrong on
+purpose (unsigned, lightweight, a gpg signature, signed by another key, a
+signature moved from another tag, no summary line; a name that is not the
+version, only begins with it or is cut short of it, a version from another
+table, a commit with no version, and a parser that cannot run) and fails unless
+each is refused, on every pull request and before every release.
+`v0.1.0`'s release run predates the version check and its arms; see below.
 The version in `pyproject.toml` at a commit no tag names is not a release.
 While the major version is 0, a change to what the suite decides moves the
 minor version and may break a caller; a patch release never changes what the
@@ -715,6 +736,12 @@ another tag and moved to this one. The script's exit 0 shows that a key
 `.github/allowed_signers` names signed a tag object carrying this tag's own
 name. The file travels in the same tree as the tag it vouches for, so it says
 nothing on its own about who holds that key.
+
+The version is checked with `bash .github/release/check-version.sh <tag>`,
+which reads `pyproject.toml` from the commit the tag names, not from the
+working tree. `v0.1.0` was released before that script existed, so its tree
+does not carry it and its release run did not compare its version; from a
+clone at `main`, `bash .github/release/check-version.sh v0.1.0` admits it.
 
 **Do not install by the bare name.** `ration` on PyPI is an unrelated project.
 This package is not published to a registry: the wheel would carry
