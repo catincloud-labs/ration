@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Verify that refs/tags/<tag> is a release tag this repository will build:
-# an annotated tag object, carrying an SSH signature, made by a key the
-# allowed-signers file names, under its own name.
+# an annotated tag object, whose signature is SSH, made by a key the
+# allowed-signers file names, under its own name, with a summary line.
 #
 #   bash .github/release/verify-tag.sh <tag> <allowed-signers-file>
 #
 # One script, run by both halves of .github/workflows/release.yml: the
-# `signature` job runs it on the pushed tag, and the `refusal` job runs it on
-# tags built wrong on purpose and asserts each exit code below. A check run
-# only on the tag would be a control observed only to pass.
+# `signature` job's gate is a single call to it on the pushed tag, and the
+# `refusal` job runs it on tags built wrong on purpose and asserts each exit
+# code below. A check run only on the tag would be a control observed only to
+# pass. It is also the check to run by hand, before pushing a tag or after
+# fetching one.
 #
 # Each refusal has its own exit code, so an arm of the refusal job that expects
 # one refusal cannot be satisfied by another:
@@ -17,10 +19,12 @@
 #   2  the allowed-signers file is missing or names no key, so nothing could
 #      have verified; read as blind, never as "no signer matched"
 #   3  refs/tags/<tag> is absent, or is not a tag object (a lightweight tag)
-#   4  the tag object carries no SSH signature (unsigned, or signed by gpg)
+#   4  the tag object's signature is not SSH: unsigned, or a gpg or x509 block
+#      after any SSH one
 #   5  git verify-tag refused the signature (a key the file does not name,
 #      or a signature that does not cover the object)
 #   6  the signed tag object names another tag: a signature moved to this ref
+#   7  the annotation has no first line, so the release has no summary
 #
 # Usage errors exit 64.
 
@@ -34,8 +38,8 @@ fi
 TAG="$1"
 REF="refs/tags/${TAG}"
 
-# Absolute, because git resolves a relative gpg.ssh.allowedSignersFile against
-# wherever it happens to run.
+# Absolute, because the argument is relative to the caller's directory and git
+# resolves a relative gpg.ssh.allowedSignersFile against the worktree top.
 if [ ! -f "$2" ]; then
   echo "::error::Allowed-signers file $2 does not exist, so no tag could verify against it."
   exit 2
@@ -57,15 +61,26 @@ case "$TYPE" in
     exit 3 ;;
 esac
 
-# A classifier, not the gate: it names the unsigned case and keeps a gpg
-# signature, which nothing here trusts, from reaching gpg's keyring. A message
-# that merely contains this line still has to pass verify-tag below.
-if ! git cat-file tag "$REF" | grep -q -x -e '-----BEGIN SSH SIGNATURE-----'; then
-  echo "::error::${TAG} carries no SSH signature. Delete it and cut it again with git tag -s."
-  exit 4
-fi
+# Git reads a tag's signature from the LAST line that starts one of the formats
+# it knows, and hands it to that format's program. So the format is classified
+# on that line, not on whether an SSH line appears anywhere: a message holding
+# an SSH line followed by a gpg block is a gpg signature, and gpg trusts
+# whatever its keyring holds, not this file. The verify call below also points
+# the gpg and x509 programs at `false`, so a block this misclassified still
+# could not verify; that second lock has no arm of its own, because nothing can
+# reach it past this one.
+LAST="$(git cat-file tag "$REF" \
+  | grep -E '^-----BEGIN (PGP SIGNATURE|PGP MESSAGE|SIGNED MESSAGE|SSH SIGNATURE)-----' \
+  | tail -n 1)"
+case "$LAST" in
+  "-----BEGIN SSH SIGNATURE-----"*) ;;
+  *)
+    echo "::error::${TAG} carries no SSH signature (its last signature line is '${LAST:-none}'). Delete it and cut it again with git tag -s."
+    exit 4 ;;
+esac
 
-if ! git -c gpg.ssh.allowedSignersFile="$SIGNERS" verify-tag "$REF"; then
+if ! git -c gpg.openpgp.program=false -c gpg.x509.program=false \
+    -c gpg.ssh.allowedSignersFile="$SIGNERS" verify-tag "$REF"; then
   echo "::error::${TAG} is signed by a key ${SIGNERS} does not name, or its signature does not cover it."
   exit 5
 fi
@@ -79,4 +94,12 @@ if [ "$NAMED" != "$TAG" ]; then
   exit 6
 fi
 
-echo "OK - ${TAG} is a tag object signed by a key ${SIGNERS} names."
+# The release's summary is the annotation's first line. Checked here so an
+# empty one fails in seconds rather than after the suite.
+SUMMARY="$(git for-each-ref --format='%(contents:subject)' "$REF")"
+if [ -z "$SUMMARY" ]; then
+  echo "::error::${TAG}'s annotation has no first line, so the release would have no summary. Cut it again with git tag -s -m \"<summary>\"."
+  exit 7
+fi
+
+echo "OK - ${TAG} is a tag object signed by a key ${SIGNERS} names, under its own name: ${SUMMARY}"

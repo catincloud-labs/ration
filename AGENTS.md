@@ -207,9 +207,10 @@ everywhere or nowhere. Nothing checks it.
   `CLAUDE.md` at the root **is** tracked and is only an `@AGENTS.md` import,
   which is how this file reaches a tool that does not read it by name. Do not
   copy rules into it: two copies of a rule is one rule and one stale claim.
-- **Every CI check runs from this tree.** `.github/workflows/checks.yml` and
-  `pr-hygiene.yml` are local jobs, and the guards they run live under
-  `scripts/`.
+- **Every CI check runs from this tree.** `.github/workflows/checks.yml`,
+  `pr-hygiene.yml` and `release.yml` are local jobs. The guards the first two
+  run live under `scripts/`; the release tag verifier is
+  `.github/release/verify-tag.sh`, written here and copied from nowhere.
   - The guards under `scripts/` (and `.github/markdownlint.json`) are
     **byte-identical copies** of checkers maintained in a private repository,
     which a public repository's workflow cannot call. They are compared
