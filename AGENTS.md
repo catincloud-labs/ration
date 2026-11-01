@@ -111,6 +111,13 @@ moves stand behind that rule, each paid for in this organisation:
     red on that step until the maintainer labels it. That red is expected.
   - Dependabot is exempt by author, and the exemption prints its closing
     condition at every firing: a `labels:` key in `.github/dependabot.yml`.
+  - **The template's label line is a shared line with its link sentence cut,
+    and nothing else changed.** The shared label line ends with a link to a
+    private record. A reader of this repository cannot follow that link, so
+    here the line ends after its first sentence. The line beneath it is this repository's own: its two values,
+    and what a contributor from a fork should expect. Do not re-add the link,
+    and do not merge the two lines: the first stays a byte-identical prefix of
+    the shared one.
   - Check a label set before uploading:
     `python scripts/check_deploy_label.py --labels-json '["deploy:none"]'`.
 - **Never put a `close` / `fix` / `resolve` verb immediately before `#N`** in a
