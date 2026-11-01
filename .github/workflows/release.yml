@@ -1,0 +1,313 @@
+name: release
+
+# The release path for this repository, and the only one.
+#
+# A release here is a GitHub release on a signed `v*` tag, created only after
+# the tag's SSH signature has been verified against `.github/allowed_signers`
+# and the suite has passed at the tagged commit. Nothing is built or pushed to
+# a registry: the wheel would carry `src/ration` and not the suite that judges
+# it (README, "Versions and releases"). A merge cannot release.
+#
+# TO CUT A RELEASE, from a clone whose `gpg.format` is `ssh` and whose
+# `user.signingkey` is the key `.github/allowed_signers` names:
+#   git tag -s v0.1.0 -m "ration 0.1.0: <summary>"
+#   git -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag v0.1.0
+#   git push origin v0.1.0
+# The second line runs the check `signature` will run, before the tag is
+# public. The annotation's first line becomes the release's summary, so a tag
+# with an empty one stops at `release` after everything else is green.
+#
+# THE VERIFIER IS SHOWN TO REFUSE, NOT ONLY TO PASS. `refusal` runs the same
+# script `signature` runs, against tags built wrong on purpose in the runner's
+# own clone, and asserts each one's exit code. It runs on every pull request
+# and on `main`, so the refusal is on record before any tag exists, and on the
+# tag push itself, where `release` needs it: a release is created only in a run
+# that also showed the verifier rejecting, at the same commit.
+#
+# WHAT THIS DOES NOT PROVE: the allowed-signers file, the script and this
+# workflow all come from the tagged commit, so whoever can cut a `v*` tag can
+# point it at a tree that trusts their own key. The signature is a gate on the
+# key the tree names, not on who holds it.
+
+on:
+  push:
+    tags: ["v*"]
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# No job here is named `tests`, or anything else a required check matches. A
+# job skipped by its `if:` still reports, and a skipped report under a required
+# check's name would read as that check passing.
+jobs:
+  # The pushed tag, verified first so a wrong one fails in seconds and the
+  # suite never runs for it.
+  #
+  # NO `git fetch` OF THE TAG, and do not add one. Checkout at this pin fetches
+  # a tag push by ref, tag object included, and refuses the run unless that tag
+  # peels to `github.sha`. A `--force` re-fetch would swap in whatever the tag
+  # names now, so the signature read would no longer be the one over the commit
+  # being tested. If a later checkout delivers a bare commit instead, this goes
+  # red with exit 3, never green; the remote's view is printed so a lightweight
+  # push (no `^{}` line) can be told from a checkout that dropped the object.
+  signature:
+    name: the tag is signed
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag-object: ${{ steps.verify.outputs.tag-object }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: The tag is signed by a key in .github/allowed_signers
+        id: verify
+        run: |
+          set +e
+          bash .github/release/verify-tag.sh "$GITHUB_REF_NAME" .github/allowed_signers
+          status=$?
+          set -e
+          if [ "$status" -eq 3 ]; then
+            git ls-remote origin "refs/tags/${GITHUB_REF_NAME}" "refs/tags/${GITHUB_REF_NAME}^{}" || true
+          fi
+          if [ "$status" -ne 0 ]; then
+            echo "Nothing has been released."
+            exit "$status"
+          fi
+          # The object verified here, so `release` can refuse a tag that was
+          # moved after this read.
+          echo "tag-object=$(git rev-parse "refs/tags/${GITHUB_REF_NAME}")" >> "$GITHUB_OUTPUT"
+
+  # The same suite `checks.yml` runs as `tests`, repeated here rather than
+  # depended on: a release gate that trusts another workflow's green is
+  # trusting a run that may have been for a different commit. It checks out
+  # `github.sha`, the commit `signature` verified, never the tag by name.
+  suite:
+    name: suite at the tag
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [signature]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ration
+          POSTGRES_PASSWORD: ration
+          POSTGRES_DB: ration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      RATION_POSTGRES_DSN: postgresql://ration:ration@localhost:5432/ration
+      # A release on fakes alone is red, for the reason `checks.yml` gives.
+      RATION_REQUIRE_POSTGRES: "1"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Install the package and the suite's dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      # pytest exits 5 when it collected nothing, which must not read as a pass.
+      - name: The suite
+        run: |
+          set +e
+          python -m pytest
+          status=$?
+          set -e
+          if [ "$status" -eq 5 ]; then
+            echo "::error::pytest collected no tests, which would otherwise read as a pass."
+            exit 1
+          fi
+          exit "$status"
+
+  # Tags built wrong on purpose, one per way a release tag can be wrong, each
+  # expected to be refused with its own exit code (the table at the head of
+  # `verify-tag.sh`), and one built right, expected to be admitted. They exist
+  # only in this job's clone. Nothing here can push them: the clone keeps no
+  # credentials and the token is read-only.
+  #
+  # The admitted arm needs a signature the verifier trusts, and the release key
+  # never comes near CI. So a throwaway key is generated here, trusted only by
+  # a file in this job's temp directory, and discarded with the runner. The
+  # same signed tag is then checked against the real `.github/allowed_signers`,
+  # which must refuse it: that arm is the "any other signer" case, and the
+  # admitted arm is what shows the refusals are not a verifier that refuses
+  # everything.
+  refusal:
+    name: the verifier refuses
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      VERIFY: .github/release/verify-tag.sh
+      SIGNERS: .github/allowed_signers
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The positive control for the real file: the keys it names, by
+      # fingerprint. A file the verifier could not read would refuse every arm
+      # below for the wrong reason, and the script exits 2 rather than 5 then.
+      - name: The tools, and the keys .github/allowed_signers names
+        run: |
+          git --version
+          ssh -V
+          named=0
+          while read -r principal options type key rest; do
+            printf '%s %s\n' "$type" "$key" > "$RUNNER_TEMP/named.pub"
+            printf '%s ' "$principal"
+            ssh-keygen -l -f "$RUNNER_TEMP/named.pub"
+            named=$((named + 1))
+          done < <(grep -v -E '^[[:space:]]*(#|$)' "$SIGNERS")
+          if [ "$named" -lt 1 ]; then
+            echo "::error::$SIGNERS names no key, so every arm below would be refused for the wrong reason."
+            exit 1
+          fi
+
+      - name: Tags built in this clone, never pushed
+        run: |
+          git config user.name "release refusal arm"
+          git config user.email "refusal@example.invalid"
+          ssh-keygen -q -t ed25519 -N '' -C throwaway -f "$RUNNER_TEMP/throwaway"
+          printf 'refusal@example.invalid namespaces="git" %s\n' \
+            "$(cut -d' ' -f1,2 "$RUNNER_TEMP/throwaway.pub")" > "$RUNNER_TEMP/throwaway_signers"
+          git tag v0.0.0-lightweight
+          git tag -a v0.0.0-unsigned -m "an annotated tag with no signature"
+          git -c gpg.format=ssh -c user.signingkey="$RUNNER_TEMP/throwaway" \
+            tag -s v0.0.0-signed -m "signed by a key generated in this job"
+          git update-ref refs/tags/v0.0.0-moved "$(git rev-parse refs/tags/v0.0.0-signed)"
+          git for-each-ref --format='%(refname) %(objecttype) %(tag)' refs/tags
+
+      - name: "Refused: an unsigned annotated tag (exit 4)"
+        run: |
+          set +e
+          bash "$VERIFY" v0.0.0-unsigned "$SIGNERS"
+          got=$?
+          set -e
+          [ "$got" -eq 4 ] || { echo "::error::An unsigned annotated tag exited $got, expected 4."; exit 1; }
+          echo "Refused with 4, as built."
+
+      - name: "Refused: a lightweight tag (exit 3)"
+        run: |
+          set +e
+          bash "$VERIFY" v0.0.0-lightweight "$SIGNERS"
+          got=$?
+          set -e
+          [ "$got" -eq 3 ] || { echo "::error::A lightweight tag exited $got, expected 3."; exit 1; }
+          echo "Refused with 3, as built."
+
+      - name: "Refused: a tag signed by a key the file does not name (exit 5)"
+        run: |
+          set +e
+          bash "$VERIFY" v0.0.0-signed "$SIGNERS"
+          got=$?
+          set -e
+          [ "$got" -eq 5 ] || { echo "::error::A tag signed by another key exited $got, expected 5."; exit 1; }
+          echo "Refused with 5, as built."
+
+      - name: "Refused: a signature made for another tag (exit 6)"
+        run: |
+          set +e
+          bash "$VERIFY" v0.0.0-moved "$RUNNER_TEMP/throwaway_signers"
+          got=$?
+          set -e
+          [ "$got" -eq 6 ] || { echo "::error::A moved signature exited $got, expected 6."; exit 1; }
+          echo "Refused with 6, as built."
+
+      - name: "Refused: an allowed-signers file that is not there (exit 2)"
+        run: |
+          set +e
+          bash "$VERIFY" v0.0.0-signed "$RUNNER_TEMP/absent_signers"
+          got=$?
+          set -e
+          [ "$got" -eq 2 ] || { echo "::error::A missing allowed-signers file exited $got, expected 2."; exit 1; }
+          echo "Refused with 2, as built."
+
+      - name: "Admitted: a tag signed by a key the file names (exit 0)"
+        run: |
+          set +e
+          bash "$VERIFY" v0.0.0-signed "$RUNNER_TEMP/throwaway_signers"
+          got=$?
+          set -e
+          [ "$got" -eq 0 ] || { echo "::error::A tag signed by a trusted key exited $got, expected 0."; exit 1; }
+          echo "Admitted, as built."
+
+  # The one job that may write, and its one write is a release on a tag that
+  # already exists: `--verify-tag` refuses to mint one, and a minted tag would
+  # start this workflow again.
+  release:
+    name: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [signature, suite, refusal]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERIFIED: ${{ needs.signature.outputs.tag-object }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create the release for this tag
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          # A re-run treats an existing release as satisfied: the contract is
+          # "the tag has a release", which an earlier attempt may have met.
+          if gh release view "$TAG" --json name >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists - satisfied."
+            exit 0
+          fi
+
+          # The tag on the remote must still be the object `signature`
+          # verified. A tag deleted and pushed again names a new object, and
+          # this run verified the old one.
+          REMOTE="$(gh api "repos/${GH_REPO}/git/ref/tags/${TAG}" --jq '.object.sha')"
+          if [ -z "$VERIFIED" ] || [ "$REMOTE" != "$VERIFIED" ]; then
+            echo "::error::refs/tags/${TAG} is ${REMOTE:-absent} on the remote, and this run verified '${VERIFIED}'. Nothing has been released."
+            exit 1
+          fi
+
+          SUMMARY="$(git tag -l --format='%(contents:subject)' "$TAG")"
+          if [ -z "$SUMMARY" ]; then
+            echo "::error::${TAG}'s annotation has no first line, so there is no hand-written summary for the release."
+            exit 1
+          fi
+          RUN="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          {
+            printf '%s\n\n' "$SUMMARY"
+            printf 'The tag signature was verified against `.github/allowed_signers`, the verifier was shown refusing tags built wrong, and the suite passed at %s, in %s.\n\n' "$GITHUB_SHA" "$RUN"
+            printf 'To check the signature yourself, from a clone at this tag:\n\n'
+            printf '    git -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag %s\n' "$TAG"
+          } > "$RUNNER_TEMP/release-body.md"
+
+          if ! gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/release-body.md"; then
+            if gh release view "$TAG" --json name >/dev/null 2>&1; then
+              echo "Release ${TAG} appeared concurrently - satisfied."
+              exit 0
+            fi
+            echo "::error::Could not create the release for ${TAG}."
+            exit 1
+          fi

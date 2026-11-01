@@ -639,14 +639,27 @@ failure about a store that had been back the whole time.
 
 ## Versions and releases
 
-**No release has been cut**, and the workflow that would build one is not in
-this tree: install from a checkout, as below. A release is meant to be a signed
-`v*` tag, with a GitHub release built from it only after the tag's signature
-and the suite have been checked. The version in `pyproject.toml` at a commit no
-tag names is not a release. While
-the major version is 0, a change to what the suite decides moves the minor
-version and may break a caller; a patch release never changes what the suite
-decides.
+**No release has been cut**: install from a checkout, as below. A release is a
+signed `v*` tag and the GitHub release `.github/workflows/release.yml` creates
+from it, after verifying the tag's SSH signature against
+`.github/allowed_signers` and running the suite at the tagged commit. The same
+workflow runs the verifier on tags built wrong on purpose (unsigned,
+lightweight, signed by another key, a signature moved from another tag) and
+fails unless each is refused, on every pull request and before every release.
+The version in `pyproject.toml` at a commit no tag names is not a release.
+While the major version is 0, a change to what the suite decides moves the
+minor version and may break a caller; a patch release never changes what the
+suite decides.
+
+A tag's signature is checked from a clone at that tag:
+
+```sh
+git -c gpg.ssh.allowedSignersFile=.github/allowed_signers verify-tag v0.1.0
+```
+
+That shows the key `.github/allowed_signers` names signed the tag. The file
+travels in the same tree as the tag it vouches for, so it says nothing on its
+own about who holds that key.
 
 **Do not install by the bare name.** `ration` on PyPI is an unrelated project.
 This package is not published to a registry: the wheel would carry
