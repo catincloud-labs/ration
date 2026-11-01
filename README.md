@@ -691,14 +691,26 @@ failure about a store that had been back the whole time.
 
 ## Versions and releases
 
-**No release has been cut**: install from a checkout, as below. A release is a
-signed `v*` tag and the GitHub release `.github/workflows/release.yml` creates
-from it, after verifying the tag's SSH signature against
-`.github/allowed_signers` and running the suite at the tagged commit. The same
-workflow runs the verifier on tags built wrong on purpose (unsigned,
-lightweight, a gpg signature, signed by another key, a signature moved from
-another tag, no summary line) and fails unless each is refused, on every pull
-request and before every release.
+**Releases are listed at <https://github.com/catincloud-labs/ration/releases>,
+and the first is
+[`v0.1.0`](https://github.com/catincloud-labs/ration/releases/tag/v0.1.0).**
+Install a release from a clone at its tag, then as in *Running it*, below:
+
+```sh
+git clone https://github.com/catincloud-labs/ration.git
+cd ration
+git switch --detach v0.1.0
+```
+
+A release carries no files of its own. The source archives GitHub attaches to
+every release hold no `.git`, so the tag cannot be checked from one; use the
+clone. A release is a signed `v*` tag and the GitHub release
+`.github/workflows/release.yml` creates from it, after verifying the tag's SSH
+signature against `.github/allowed_signers` and running the suite at the tagged
+commit. The same workflow runs the verifier on tags built wrong on purpose
+(unsigned, lightweight, a gpg signature, signed by another key, a signature
+moved from another tag, no summary line) and fails unless each is refused, on
+every pull request and before every release.
 The version in `pyproject.toml` at a commit no tag names is not a release.
 While the major version is 0, a change to what the suite decides moves the
 minor version and may break a caller; a patch release never changes what the
