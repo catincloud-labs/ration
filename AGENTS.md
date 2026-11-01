@@ -201,6 +201,12 @@ everywhere or nowhere. Nothing checks it.
 - **The tree is ASCII**, every tracked file, enforced by
   `tests/test_ascii_only.py`, whose docstring gives both reasons. Write `-` or
   `--` for a dash and plain words for emphasis.
+- **A tracked document states the present.** This repository is public, so
+  every document in it is read by strangers. When a sentence in one is found
+  dead, the change that finds it rewrites the sentence to what is true at
+  `main` and, in the same commit, moves the dead text into `CHANGELOG.md`,
+  dated in UTC, with what it was read against and the commit its wording
+  entered with.
 - **No tool-specific configuration is tracked.** Governance lives in this file,
   which every tool reads. `.claude/` stays in `.gitignore` so machine-local
   state cannot arrive by accident; it is not a place to put anything shared.

@@ -694,13 +694,18 @@ failure about a store that had been back the whole time.
 **Releases are listed at <https://github.com/catincloud-labs/ration/releases>,
 and the first is
 [`v0.1.0`](https://github.com/catincloud-labs/ration/releases/tag/v0.1.0).**
-Install a release from a clone at its tag, then as in *Running it*, below:
+Install a release from a clone at its tag, then as in *Running it*, below; for
+another release, put its tag in place of `v0.1.0`:
 
 ```sh
 git clone https://github.com/catincloud-labs/ration.git
 cd ration
 git switch --detach v0.1.0
 ```
+
+A clone at a tag holds this README as it stood at that tag. The one at
+`v0.1.0` still says no release had been cut, which is what it said before the
+tag existed; `CHANGELOG.md` at `main` records that sentence and when it died.
 
 A release carries no files of its own. The source archives GitHub attaches to
 every release hold no `.git`, so the tag cannot be checked from one; use the
@@ -711,8 +716,10 @@ signature against `.github/allowed_signers`, reading the tag's name as exactly
 the suite there. The same workflow runs both checks on tags built wrong on
 purpose (unsigned, lightweight, a gpg signature, signed by another key, a
 signature moved from another tag, no summary line; a name that is not the
-version, or only begins with it, and a commit with no version) and fails unless
+version, only begins with it or is cut short of it, a version from another
+table, a commit with no version, and a parser that cannot run) and fails unless
 each is refused, on every pull request and before every release.
+`v0.1.0`'s release run predates the version check and its arms; see below.
 The version in `pyproject.toml` at a commit no tag names is not a release.
 While the major version is 0, a change to what the suite decides moves the
 minor version and may break a caller; a patch release never changes what the
