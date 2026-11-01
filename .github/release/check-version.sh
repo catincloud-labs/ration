@@ -16,12 +16,14 @@
 #
 #   0  the tag is v<version>
 #   3  refs/tags/<tag> is absent, or names nothing that peels to a commit
-#   4  the tagged commit has no pyproject.toml, or one that names no
-#      [project].version, so there is no version to compare; read as blind,
-#      never as a match or a mismatch
+#   4  the tagged commit has no pyproject.toml, or one that does not parse to
+#      a [project].version string, so there is no version to compare; never
+#      read as a match or a mismatch
 #   5  the tag's name is not v<version>
 #
-# Usage errors, and a machine with no Python to parse with, exit 64.
+# Usage errors exit 64, and so does a machine where no python3 or python can
+# import tomllib: that is a parser that could not run, which says nothing
+# about the file, so it is never reported as exit 4.
 
 set -u
 
@@ -33,35 +35,48 @@ fi
 TAG="$1"
 REF="refs/tags/${TAG}"
 
-COMMIT="$(git rev-parse --verify --quiet "${REF}^{commit}")"
+COMMIT="$(git rev-parse --verify --quiet "${REF}^{commit}" 2>/dev/null)"
 if [ -z "$COMMIT" ]; then
   echo "::error::${REF} is not in this clone, or names no commit, so there is no version to read."
   exit 3
 fi
 
-# python3 on the runner; python where only that name exists. The program comes
-# from -c and only the file arrives on standard input.
+# python3 on the runner; python where only that name exists. The parser is
+# seen to run before any answer from it is read as one about the file.
 PY="$(command -v python3 || command -v python)"
-if [ -z "$PY" ]; then
-  echo "::error::No python3 or python on PATH, so pyproject.toml cannot be parsed." >&2
+if [ -z "$PY" ] || ! "$PY" -c 'import tomllib' >/dev/null 2>&1; then
+  echo "::error::No python3 or python on PATH can import tomllib (Python 3.11 or later), so pyproject.toml cannot be parsed. Nothing is known about its version." >&2
   exit 64
 fi
 
-# A rev:path argument, so path conversion is off for this one command.
-VERSION="$(MSYS_NO_PATHCONV=1 git show "${COMMIT}:pyproject.toml" 2>/dev/null \
+# rev:path arguments, so path conversion is off for these commands.
+if ! MSYS_NO_PATHCONV=1 git cat-file -e "${COMMIT}:pyproject.toml" 2>/dev/null; then
+  echo "::error::The commit ${COMMIT} that ${TAG} names has no pyproject.toml, so there is no version to compare its name with."
+  exit 4
+fi
+
+# The program comes from -c and only the file arrives on standard input. It
+# exits 2 for a file that parses to no version, and anything else it does
+# other than print one is a parser failure.
+VERSION="$(MSYS_NO_PATHCONV=1 git show "${COMMIT}:pyproject.toml" \
   | "$PY" -c '
 import sys, tomllib
 try:
     version = tomllib.loads(sys.stdin.buffer.read().decode("utf-8"))["project"]["version"]
 except (tomllib.TOMLDecodeError, KeyError, TypeError, UnicodeDecodeError):
-    sys.exit(1)
+    sys.exit(2)
 if not isinstance(version, str) or not version:
-    sys.exit(1)
+    sys.exit(2)
 print(version)
 ')"
-if [ -z "$VERSION" ]; then
-  echo "::error::The commit ${COMMIT} that ${TAG} names has no pyproject.toml carrying [project].version, so there is nothing to compare its name with."
+PARSED=$?
+if [ "$PARSED" -eq 2 ]; then
+  echo "::error::The commit ${COMMIT} that ${TAG} names has a pyproject.toml that does not parse to a [project].version string, so there is no version to compare its name with."
   exit 4
+fi
+if [ "$PARSED" -ne 0 ] || [ -z "$VERSION" ]; then
+  echo "::error::The parser exited ${PARSED} on the pyproject.toml at ${COMMIT} without an answer. Nothing is known about its version." >&2
+  exit 64
 fi
 
 if [ "$TAG" != "v${VERSION}" ]; then

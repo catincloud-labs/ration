@@ -5,9 +5,9 @@ name: release
 # A release here is a GitHub release on a signed `v*` tag, created only after
 # the tag's SSH signature has been verified against `.github/allowed_signers`,
 # the tag's name has been read as `v` and the version `pyproject.toml` carries
-# at the tagged commit, and the suite has passed there. Nothing is built or pushed to
-# a registry: the wheel would carry `src/ration` and not the suite that judges
-# it (README, "Versions and releases"). A merge cannot release.
+# at the tagged commit, and the suite has passed there. Nothing is built or
+# pushed to a registry: the wheel would carry `src/ration` and not the suite
+# that judges it (README, "Versions and releases"). A merge cannot release.
 #
 # TO CUT A RELEASE, from a clone whose `gpg.format` is `ssh` and whose
 # `user.signingkey` is the key `.github/allowed_signers` names, at a commit
@@ -173,8 +173,10 @@ jobs:
   #
   # The version arms need commits whose `pyproject.toml` says something other
   # than this tree's, so they are built here too, from this tree's file with
-  # only the version line changed, and never checked out. The mismatched arm
-  # is a tag on this job's own commit under a name its version is not.
+  # only the version line changed, removed or shadowed, and never checked out.
+  # The mismatched arm is a tag on this job's own commit under a name its
+  # version is not. Every version arm's tag is signed by the throwaway key,
+  # because the gate only reaches this check with a signed tag object.
   refusal:
     name: the verifier refuses
     runs-on: ubuntu-latest
@@ -240,9 +242,12 @@ jobs:
           git update-ref refs/tags/v0.0.0-decoy "$decoy"
 
           # Commits for the version arms: this tree with pyproject.toml's
-          # version line replaced, or removed. Each is read back through the
-          # file it was built from, so an edit that matched nothing is red
-          # here rather than an arm refused for the wrong reason.
+          # version line replaced or removed, or with another table's
+          # `version` put ahead of it. The arm version carries a local label
+          # no release will, so no tag a push fetches can share an arm's name.
+          # Each is read back through the file it was built from, so an edit
+          # that matched nothing is red here rather than an arm refused for the
+          # wrong reason.
           retree() {
             blob="$(sed -E "$1" pyproject.toml | git hash-object -w --stdin)"
             git ls-tree HEAD \
@@ -250,18 +255,40 @@ jobs:
               | git mktree
           }
           commit_with() { git commit-tree "$(retree "$1")" -p HEAD -m "$2"; }
-          bumped="$(commit_with 's/^version = "[^"]*"$/version = "0.0.1"/' "pyproject.toml at version 0.0.1")"
+          ARM="0.0.0+refusal-arm"
+          bumped="$(commit_with "s/^version = \"[^\"]*\"\$/version = \"${ARM}\"/" "pyproject.toml at version ${ARM}")"
           unversioned="$(commit_with '/^version = "[^"]*"$/d' "pyproject.toml with no version")"
-          git show "${bumped}:pyproject.toml" | grep -x 'version = "0.0.1"' \
-            || { echo "::error::The bumped commit's pyproject.toml does not say 0.0.1."; exit 1; }
+          decoyed="$(commit_with '1i [tool.refusal-arm]\nversion = "0.0.0+decoy"\n' "another table's version ahead of [project]'s")"
+          git show "${bumped}:pyproject.toml" | grep -x "version = \"${ARM}\"" \
+            || { echo "::error::The bumped commit's pyproject.toml does not say ${ARM}."; exit 1; }
           if git show "${unversioned}:pyproject.toml" | grep -E '^version[[:space:]]*='; then
             echo "::error::The unversioned commit's pyproject.toml still names a version."
             exit 1
           fi
-          git tag v0.0.0-mismatch HEAD
-          git tag v0.0.1 "$bumped"
-          git tag v0.0.1-rc1 "$bumped"
-          git tag v0.0.0-unversioned "$unversioned"
+          git show "${decoyed}:pyproject.toml" | grep -E '^version[[:space:]]*=' > "$RUNNER_TEMP/decoyed.txt"
+          [ "$(head -n 1 "$RUNNER_TEMP/decoyed.txt")" = 'version = "0.0.0+decoy"' ] && [ "$(wc -l < "$RUNNER_TEMP/decoyed.txt")" -eq 2 ] \
+            || { echo "::error::The decoyed commit's pyproject.toml does not carry the decoy first and [project]'s version second."; cat "$RUNNER_TEMP/decoyed.txt"; exit 1; }
+
+          # Signed, by the throwaway key: the gate runs this check only after
+          # verify-tag.sh has admitted a signed tag object, so that is the
+          # shape every version arm presents.
+          sign v0.0.0-mismatch -m "this job's own commit under another version's name" HEAD
+          sign "v${ARM}" -m "named for its commit's version" "$bumped"
+          sign "v${ARM}-rc1" -m "begins with its commit's v<version>" "$bumped"
+          sign "v${ARM%-arm}" -m "a proper prefix of its commit's v<version>" "$bumped"
+          sign v0.0.0-unversioned -m "a commit with no version" "$unversioned"
+          sign v0.0.0+decoy -m "named for another table's version" "$decoyed"
+          for t in v0.0.0-mismatch "v${ARM}" "v${ARM}-rc1" "v${ARM%-arm}" v0.0.0-unversioned v0.0.0+decoy; do
+            [ "$(git cat-file -t "refs/tags/$t")" = tag ] || { echo "::error::$t is not a tag object."; exit 1; }
+          done
+
+          # A python3 and a python that both fail, for the arm whose parser
+          # cannot run.
+          mkdir "$RUNNER_TEMP/nopython"
+          printf '#!/bin/sh\nexit 1\n' > "$RUNNER_TEMP/nopython/python3"
+          cp "$RUNNER_TEMP/nopython/python3" "$RUNNER_TEMP/nopython/python"
+          chmod +x "$RUNNER_TEMP/nopython/python3" "$RUNNER_TEMP/nopython/python"
+
           echo "this job's own version, which v0.0.0-mismatch must not be named for:"
           git show "HEAD:pyproject.toml" | grep -E '^version[[:space:]]*='
           git for-each-ref --format='%(refname) %(objecttype) %(tag)' refs/tags
@@ -368,10 +395,28 @@ jobs:
       - name: "Refused: a tag that only begins with its commit's version (exit 5)"
         run: |
           set +e
-          bash .github/release/check-version.sh v0.0.1-rc1
+          bash .github/release/check-version.sh "v0.0.0+refusal-arm-rc1"
           got=$?
           set -e
           [ "$got" -eq 5 ] || { echo "::error::A tag that only begins with v and the version exited $got, expected 5."; exit 1; }
+          echo "Refused with 5, as built."
+
+      - name: "Refused: a tag that is a proper prefix of its commit's version (exit 5)"
+        run: |
+          set +e
+          bash .github/release/check-version.sh "v0.0.0+refusal"
+          got=$?
+          set -e
+          [ "$got" -eq 5 ] || { echo "::error::A tag that v and the version only begin with exited $got, expected 5."; exit 1; }
+          echo "Refused with 5, as built."
+
+      - name: "Refused: a tag named for another table's version (exit 5)"
+        run: |
+          set +e
+          bash .github/release/check-version.sh "v0.0.0+decoy"
+          got=$?
+          set -e
+          [ "$got" -eq 5 ] || { echo "::error::A tag named for a version outside [project] exited $got, expected 5: the file was read by line, not parsed."; exit 1; }
           echo "Refused with 5, as built."
 
       - name: "Refused: a commit whose pyproject.toml names no version (exit 4)"
@@ -392,10 +437,19 @@ jobs:
           [ "$got" -eq 3 ] || { echo "::error::An absent tag exited $got, expected 3."; exit 1; }
           echo "Refused with 3, as built."
 
+      - name: "Refused: a version check whose parser cannot run (exit 64)"
+        run: |
+          set +e
+          PATH="$RUNNER_TEMP/nopython:$PATH" bash .github/release/check-version.sh "v0.0.0+refusal-arm"
+          got=$?
+          set -e
+          [ "$got" -eq 64 ] || { echo "::error::A version check with no working parser exited $got, expected 64."; exit 1; }
+          echo "Refused with 64, as built."
+
       - name: "Admitted: a tag named v and its commit's version (exit 0)"
         run: |
           set +e
-          bash .github/release/check-version.sh v0.0.1
+          bash .github/release/check-version.sh "v0.0.0+refusal-arm"
           got=$?
           set -e
           [ "$got" -eq 0 ] || { echo "::error::A tag named for its commit's version exited $got, expected 0."; exit 1; }
