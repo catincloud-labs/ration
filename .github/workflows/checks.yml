@@ -127,6 +127,22 @@ jobs:
           echo "::error::GitHub and the Autoclose trailer disagree about what merging this will close."
           exit 1
 
+      # git on Linux and macOS skips a hook that is not executable, so a
+      # `.githooks/commit-msg` tracked as 100644 runs nothing there and fails
+      # nothing. Git for Windows ignores the bit, so a delete and re-add there
+      # would put 100644 back unseen. The check reads the mode from the index,
+      # after its own self-test shows it fire on a planted 100644 and go quiet
+      # on 100755. Last in the job, so a red mode never skips the
+      # closing-keyword verdict above. The cost runs the other way: a red step
+      # above skips these two, so that run says nothing about the mode. It is
+      # never a false green, because the job is red. `scripts/check_hook_mode.py`
+      # is a byte-identical copy like the guard; it is not edited here.
+      - name: Hook-mode check fires and goes quiet
+        run: python scripts/check_hook_mode.py --self-test
+
+      - name: Commit-msg hook is executable
+        run: python scripts/check_hook_mode.py .githooks/commit-msg
+
   # A real store, because every other implementation the suite runs is a fake
   # this repository wrote -- including the one expected to pass. A green run of
   # fakes shows the suite can discriminate and shows nothing about any store.
