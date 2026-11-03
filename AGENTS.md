@@ -129,6 +129,11 @@ moves stand behind that rule, each paid for in this organisation:
     guard over the PR body, every commit message and GitHub's own
     `closingIssuesReferences`. Enable the hook per clone - it does not install
     itself: `git config core.hooksPath .githooks`.
+  - The same job fails when `.githooks/commit-msg` is tracked at any index
+    mode but `100755` (`scripts/check_hook_mode.py`, its self-test first), since
+    git on Linux and macOS skips a hook that is not executable and Git for
+    Windows ignores the bit. The remedy it names:
+    `git update-index --chmod=+x .githooks/commit-msg`.
   - Check a draft before uploading; finding out from CI burns a run per attempt:
     `python scripts/check_closing_keywords.py <file>`.
 

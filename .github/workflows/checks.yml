@@ -133,8 +133,10 @@ jobs:
       # would put 100644 back unseen. The check reads the mode from the index,
       # after its own self-test shows it fire on a planted 100644 and go quiet
       # on 100755. Last in the job, so a red mode never skips the
-      # closing-keyword verdict above. `scripts/check_hook_mode.py` is a
-      # byte-identical copy like the guard; it is not edited here.
+      # closing-keyword verdict above. The cost runs the other way: a red step
+      # above skips these two, so that run says nothing about the mode. It is
+      # never a false green, because the job is red. `scripts/check_hook_mode.py`
+      # is a byte-identical copy like the guard; it is not edited here.
       - name: Hook-mode check fires and goes quiet
         run: python scripts/check_hook_mode.py --self-test
 
