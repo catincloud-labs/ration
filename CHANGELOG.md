@@ -25,3 +25,16 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   <https://github.com/catincloud-labs/ration/actions/runs/41261517505>, which
   verified the tag's signature and passed the suite at `a386571`. The sentence
   now directs a reader to the releases and to a clone at a release's tag.
+
+## AGENTS.md
+
+### Merging, the cold review and the record
+
+- **`A pull request body may be corrected in place, with a visible dated note
+  saying what changed.`** The second sentence of the bullet on correcting a
+  posted claim, in the subsection the organisation's repositories keep
+  byte-identical. It stood there from `9ada7a1` (2026-10-29T00:51:42Z), the
+  commit that published the tree. Read dead 2026-11-04 against the owner's
+  ruling of that day: a draft pull request's body is edited freely, with no
+  note of what changed, and the visible dated note applies once a pull
+  request has left draft. The sentence now says so.
