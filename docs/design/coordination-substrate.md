@@ -3,7 +3,8 @@
 - **Status:** living
 - **Describes:** `src/ration/contract.py`, `src/ration/lease.py`,
   `src/ration/pool.py`, `src/ration/addressing.py`, `src/ration/publish.py`,
-  `src/ration/frame.py`, `src/ration/postgres.py`, `tests/conformance/`,
+  `src/ration/frame.py`, `src/ration/postgres.py`,
+  `src/ration/duckdb_store.py`, `src/ration/memory.py`, `tests/conformance/`,
   `tests/support/backends.py`, `tests/support/codecs.py`,
   `tests/violators.py`, `tests/frame_violators.py`, `tests/test_lease.py`,
   `tests/test_pool.py`, `tests/test_addressing.py`,
@@ -13,8 +14,9 @@
   `tests/test_the_suite_discriminates.py`
 - **Reviewed:** 2026-11-06 at `73428ba` - first reading: every test this page
   names was run at that commit against the in-memory cases, DuckDB and a real
-  Postgres with `RATION_REQUIRE_POSTGRES=1`, and each one passed, or failed
-  under strict xfail for the violator registered against its property
+  Postgres with `RATION_REQUIRE_POSTGRES=1`, and each one passed, failed under
+  strict xfail for the violator registered against its property, or was
+  skipped where a store has no in-process seam for the deterministic gate
 
 This page **describes and decides nothing.** The contract is stated in
 `src/ration/contract.py` and decided by `tests/conformance/`; where this page
@@ -52,10 +54,13 @@ implementation built wrong on purpose and registered against that test's
 property is marked `xfail(strict=True)`, so it must fail, and a violator that
 passes is a red run. That is the sense in which a property here is *shown*: a
 store that keeps it passes and a store built to break exactly it is rejected.
-The registries, with the property each violator is expected to break:
+The registries are the `CASES` list in `tests/support/backends.py` and the
+`CODECS` list in `tests/support/codecs.py`; each entry names an implementation
+and the properties it is expected to break. Some entries span several lines,
+so print each with its following lines:
 
 ```sh
-grep -n "_case(" tests/support/backends.py tests/support/codecs.py
+grep -n -A3 "_case(" tests/support/backends.py tests/support/codecs.py
 ```
 
 The Postgres cases are registered only when `RATION_POSTGRES_DSN` names a
@@ -64,10 +69,16 @@ the only store more than one process can share, and the conformance tests
 below are then evidence about the in-memory fakes alone.
 
 Tests outside `tests/conformance/` run against a correct store. Where one of
-them stands on concurrency, it is paired with a **negative control**: the same
-interleaving against `naive`, a store that reads and then writes with nothing
-joining the two, which the control requires to break the guarantee. The page
-names both.
+them stands on concurrency, it is a **threaded probe**: claimants churning
+against the store, counting any grant made twice. A probe that finds nothing
+has not shown there was nothing to find, so each is paired with a **negative
+control**, a deterministic gate. The gate parks one claimant inside the gap
+between the read and the write of `naive`, a store with nothing joining the
+two, runs another to completion, and requires the guarantee to break. The
+pool's and the publication's gates then run the same parked interleaving
+against a correct store, which must keep it. The lease's gate has no such arm
+of its own; its docstring points to the pool's, whose grant is made by
+`lease.acquire`. The page names the probe and the gate.
 
 ## The substrate: one key, compare-and-set against a version
 
@@ -97,7 +108,9 @@ the current version reads. Pinned, deterministically, by
 and `tests/test_postgres_conflict_version.py::test_a_losing_create_reports_absence`.
 
 **Passing the suite is not being a shared store.** `duckdb` is registered with
-no violations and passes every conformance test, and a second process cannot
+no violations and passes every conformance test run against it (the
+deterministic atomicity gate is skipped for it, and the threaded probe
+decides), and a second process cannot
 open its database at all. The suite cannot say so, because the contract does not
 govern deployment topology; `tests/test_duckdb_single_process.py` says it, in
 `tests/test_duckdb_single_process.py::test_a_second_process_cannot_open_the_database_at_all`,
@@ -112,7 +125,7 @@ is its **fencing token**.
 
 | Guarantee | Shown by |
 | --- | --- |
-| A held key is refused to a second holder: `acquire` returns `None`, and does not retry | `tests/test_lease.py::test_a_grant_is_exclusive` |
+| A held key is refused to a second holder: `acquire` returns `None` | `tests/test_lease.py::test_a_grant_is_exclusive` |
 | Under contention, no key is granted to two holders at once | `tests/test_lease.py::test_a_grant_is_never_held_twice_under_load`, with the negative control `tests/test_lease.py::test_a_non_atomic_store_grants_a_key_that_is_already_held` |
 | A holder reacquiring under its own token is handed the grant it holds, not refused | `tests/test_lease.py::test_a_holder_reacquiring_its_own_grant_is_told_it_holds_it` |
 | Renewing moves the grant to a new version and spends the old one | `tests/test_lease.py::test_renewing_moves_the_grant_forward_and_spends_the_old_one` |
@@ -135,8 +148,8 @@ caller no longer holds the key, so `release` claims the lesser answer.
 `src/ration/pool.py`: a pool of N grants is N keys, each a lease, because the
 store expires keys rather than elements inside a value. Capacity is the
 number of keys and is written nowhere in the store. The pool adds one
-operation, a different way of choosing which key to take; it has no `renew` and
-no `release` of its own.
+operation, a different way of choosing which key to take, and a read-only
+`holders` sample; it has no `renew` and no `release` of its own.
 
 | Guarantee | Shown by |
 | --- | --- |
@@ -239,8 +252,9 @@ And against the reference codec alone:
 **What it refuses, and what that costs.** A sender identity in the header: which
 sender a frame belongs to is the receiver's knowledge, and a field the frame
 cannot verify is not carried. Any opinion about the body. A kind outside
-`KINDS`, a closed registry. Authentication: the check is a CRC, not a MAC, so
-it says a frame arrived as sent and once, not who may send it. The stated cost:
+`KINDS`, a closed registry. Authentication: the frame carries a CRC, not a
+MAC. The CRC and the sequence say a frame arrived as sent, once; neither says
+who may send it. The stated cost:
 a receiver whose ledger has seen nothing takes the first frame as its baseline,
 so a replay against a fresh ledger is not caught
 (`tests/test_frame.py::test_a_fresh_ledger_takes_the_first_frame_as_its_baseline`
