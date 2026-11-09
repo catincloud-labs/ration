@@ -233,9 +233,10 @@ class DuckDBStore:
         can move again between the failed write and this read.
 
         So callers must not read either backend's `Conflict.version` as
-        current. The contract says nothing about it, deliberately, and two
-        backends disagree about it in different directions -- which is evidence
-        that the contract was right to leave it unspecified.
+        current. The contract asks of it only that the key has held it,
+        deliberately, and two backends disagree about which held version in
+        different directions -- which is evidence that the contract was right
+        to ask no more.
         """
         row = self._execute(_CURRENT_VERSION, [key]).fetchone()
         return row[0] if row is not None else ABSENT

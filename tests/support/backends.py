@@ -52,6 +52,7 @@ from tests.violators import (
     ClientExpiryStore,
     ConflictWritesStore,
     CreateAlwaysStore,
+    EchoesExpectedStore,
     FailOpenStore,
     GlobalCounterStore,
     NaivePostgresStore,
@@ -303,6 +304,7 @@ def _postgres_case(
 CASES: list[Case] = [
     _memory_case("correct", set(), MemoryStore),
     _memory_case("create-always", {"compare-and-set"}, CreateAlwaysStore),
+    _memory_case("echoes-expected", {"compare-and-set"}, EchoesExpectedStore),
     _memory_case(
         "conflict-writes", {"compare-and-set", "atomicity"}, ConflictWritesStore
     ),

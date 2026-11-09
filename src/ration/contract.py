@@ -110,9 +110,10 @@ class Conflict:
     leave the loser holding ``Conflict(0)`` while the key is at 1.
 
     That is permitted rather than merely tolerated. **The contract requires
-    that a conflict be reported without writing, and says nothing about the
-    version it carries**, because a guarantee specified before a consumer needs
-    it is specified from imagination. Making this field exact costs a second
+    that a conflict be reported without writing, and asks of the version it
+    carries only that the key has held it.** It does not ask for the current
+    version, because a guarantee specified before a consumer needs it is
+    specified from imagination. Making this field exact costs a second
     round trip, or an ``ON CONFLICT DO UPDATE`` that writes in order to read --
     which the paragraph above forbids outright.
 
