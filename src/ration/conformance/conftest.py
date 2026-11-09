@@ -11,9 +11,10 @@ drifted, or an assertion stopped reaching -- looks exactly like a suite that is
 working.
 
 There are two registries and one mechanism. A test that takes `backend` runs
-against every store its caller registered; a test that takes `codec` runs
-against every frame codec its caller registered. Both are read from
-`support/registry.py`, which the caller fills before collection. The marker,
+against every store registered for the run; a test that takes `codec` runs
+against every frame codec registered for it. Both are read from
+`support/registry.py`, which `plugin.py` fills before collection: the
+package's own cases always, and a caller's stores beside them. The marker,
 the xfail and the bookkeeping are the same for both, because the frame contract
 asks of the frame suite exactly what the store contract asks of the store
 suite: a known-negative seen failing beside a known-positive seen passing.

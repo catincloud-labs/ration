@@ -149,6 +149,16 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   support modules are the package `ration.conformance`, under
   `src/ration/conformance/`, and this repository's registry of stores is
   `tests/cases.py` (#20). It now names `tests/cases.py`.
+- **"The repository's root `conftest.py` hands both to the suite."** Under
+  *How to read a citation*, after the sentence naming the registries, in this
+  wording from `bc4001f` (2026-11-09T21:14:03Z). Read dead 2026-11-09 against
+  the tree this entry's commit leaves, where `ration.conformance.plugin` fills
+  the suite's registries in every run: the package's own cases and frame
+  codecs, and beside them the stores its caller returns from the hook
+  `pytest_ration_cases`. This repository's root `conftest.py` enables the
+  plugin and returns `CASES` (#21). The root `conftest.py` hands the plugin
+  one registry, and the sentence now says so and that the plugin hands the
+  suite both.
 
 ### Paths to the suite
 
@@ -261,6 +271,80 @@ cited a moved path are listed beside the docstrings.
   modules are the package `ration.conformance`, under
   `src/ration/conformance/`, and this repository's registry of stores is
   `tests/cases.py` (#20). Both now name `tests/cases.py`.
+
+### The registries, once a plugin fills them
+
+- **`The cases a run judges, as its caller handed them to the suite.`** with
+  **"This repository's caller registers the package's in-memory cases, DuckDB
+  where its driver imports, and Postgres where a server is named. The caller
+  calls `register` before collection"** The docstring of
+  `src/ration/conformance/support/registry.py`, and with them the sentence its
+  refusal of an empty registry printed, **"The caller registers its cases with
+  `ration.conformance.support.registry.register` before collection."** All
+  from `f99e485` (2026-11-09T20:52:08Z). Read dead 2026-11-09 against the tree
+  this entry's commit leaves, where `ration.conformance.plugin` fills the
+  suite's registries in every run: the package's own cases and frame codecs,
+  and beside them the stores its caller returns from the hook
+  `pytest_ration_cases`. This repository's root `conftest.py` enables the
+  plugin and returns `CASES` (#21). The docstring now names the plugin as what
+  calls `register`, and the refusal tells a reader to enable the plugin.
+- **"A test that takes `backend` runs against every store its caller
+  registered; a test that takes `codec` runs against every frame codec its
+  caller registered. Both are read from `support/registry.py`, which the
+  caller fills before collection."** The docstring of
+  `src/ration/conformance/conftest.py`, from `f99e485` (2026-11-09T20:52:08Z).
+  Read dead 2026-11-09 against the tree this entry's commit leaves, where
+  `ration.conformance.plugin` fills the suite's registries in every run: the
+  package's own cases and frame codecs, and beside them the stores its caller
+  returns from the hook `pytest_ration_cases`. This repository's root
+  `conftest.py` enables the plugin and returns `CASES` (#21). A caller now
+  registers no frame codec, and the paragraph says the plugin fills both
+  registries.
+- **`This repository's registries, handed to the suite the package ships.`**
+  with **"What this file adds is the one choice the package leaves to its
+  caller: which cases a run judges. Here that is every store in
+  `tests/cases.py` and every frame codec the package defines."** The docstring
+  of the root `conftest.py`, from `bc4001f` (2026-11-09T21:14:03Z). Read dead
+  2026-11-09 against the tree this entry's commit leaves, where
+  `ration.conformance.plugin` fills the suite's registries in every run: the
+  package's own cases and frame codecs, and beside them the stores its caller
+  returns from the hook `pytest_ration_cases`. This repository's root
+  `conftest.py` enables the plugin and returns `CASES` (#21). The package's
+  own cases and its codecs are no longer the caller's choice, and the
+  docstring says the file enables the plugin and answers its hook.
+- **"Which cases a run judges is its caller's registry; this repository's is
+  `tests/cases.py` in the source tree."** with **"A caller's registry starts
+  from these, so a run that judges any store also shows each violator below
+  failing its property beside the correct store passing."** The docstring of
+  `src/ration/conformance/support/backends.py` and the comment above
+  `MEMORY_CASES` in it, from `f99e485` (2026-11-09T20:52:08Z). Read dead
+  2026-11-09 against the tree this entry's commit leaves, where
+  `ration.conformance.plugin` fills the suite's registries in every run: the
+  package's own cases and frame codecs, and beside them the stores its caller
+  returns from the hook `pytest_ration_cases`. This repository's root
+  `conftest.py` enables the plugin and returns `CASES` (#21). A caller's own
+  list need not start from `MEMORY_CASES`, since the plugin registers them
+  first; the two now say so.
+- **"which stores a run judges is the caller's decision"** in the docstring of
+  `src/ration/conformance/support/registry.py`, and **"which cases a run
+  judges is the caller's decision"** in the docstring of `tests/cases.py`,
+  both from `f99e485` (2026-11-09T20:52:08Z). Read dead 2026-11-09 against the
+  tree this entry's commit leaves, where `ration.conformance.plugin` fills the
+  suite's registries in every run: the package's own cases and frame codecs,
+  and beside them the stores its caller returns from the hook
+  `pytest_ration_cases`. This repository's root `conftest.py` enables the
+  plugin and returns `CASES` (#21). The package's own cases are no longer the
+  caller's to decide, so both now say which cases beside the package's own;
+  found by the cold review of this entry's pull request.
+- **"which the root `conftest.py` registers with that suite"** in the
+  docstring of `tests/__init__.py`, from `bc4001f` (2026-11-09T21:14:03Z).
+  Read dead 2026-11-09 against the tree this entry's commit leaves, where
+  `ration.conformance.plugin` fills the suite's registries in every run: the
+  package's own cases and frame codecs, and beside them the stores its caller
+  returns from the hook `pytest_ration_cases`. This repository's root
+  `conftest.py` enables the plugin and returns `CASES` (#21). The plugin
+  registers the cases the root `conftest.py` returns, and the sentence now
+  says the root `conftest.py` hands them to the suite through it.
 
 ### Paths only
 

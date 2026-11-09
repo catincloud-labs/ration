@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ration"
-version = "0.1.0"
+version = "0.2.0"
 description = "A bounded claim on a finite shared pool, granted for a period and refused rather than overdrawn."
 readme = "README.md"
 license = { file = "LICENSE" }

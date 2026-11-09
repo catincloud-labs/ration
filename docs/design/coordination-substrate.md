@@ -62,8 +62,9 @@ The registries are the `CASES` list in `tests/cases.py`, which starts from
 the package's `MEMORY_CASES` in `src/ration/conformance/support/backends.py`,
 and the `CODECS` list in `src/ration/conformance/support/codecs.py`; each entry
 names an implementation and the properties it is expected to break.
-The repository's root `conftest.py` hands both to the suite. Some entries span several lines,
-so print each with its following lines:
+The repository's root `conftest.py` returns `CASES` through
+`ration.conformance.plugin`, which hands the suite both registries. Some
+entries span several lines, so print each with its following lines:
 
 ```sh
 grep -n -A3 "_case(" src/ration/conformance/support/backends.py tests/cases.py src/ration/conformance/support/codecs.py

@@ -7,8 +7,8 @@ named property and pass the rest, and the backends that are not fakes at all.
 This module builds each kind of case. `MEMORY_CASES` below is the package's
 own share of a registry: the in-memory store, the correct store with an
 unusual answer, and the violators, each paired with the property it breaks.
-Which cases a run judges is its caller's registry; this repository's is
-`tests/cases.py` in the source tree.
+Which cases a run judges beside these is its caller's to say, through
+`plugin.py`; this repository's are `tests/cases.py` in the source tree.
 
 A new backend is added to a caller's registry and runs what is already
 written. It does not get tests of its own, and if it needs a special case to
@@ -107,6 +107,10 @@ class BackendUnderTest:
 
     Everything here is a capability of the **harness**, not of the contract.
     None of it is required of a backend and none of it appears in `Store`.
+
+    A caller's `Case` builds one of these for its own store. What each field
+    must do, and which may be left out, is the README's case contract, under
+    *Running the suite against your own store*.
     """
 
     case: Case
@@ -121,8 +125,9 @@ class BackendUnderTest:
     partition: Callable[[], AbstractContextManager[None]]
     #: Makes the next write raise `Ambiguous`, having done what `applied` says.
     ambiguity: Callable[..., AbstractContextManager[None]]
-    #: `None` where the store's atomic step is not in this process.
-    _stepped: Callable[[Gate], BackendUnderTest] | None
+    #: `None` where the store's atomic step is not in this process, which is
+    #: every store but the package's in-memory ones, so `None` is the default.
+    _stepped: Callable[[Gate], BackendUnderTest] | None = None
     _prefix: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     _keys: int = field(default=0, repr=False)
 
@@ -303,9 +308,10 @@ def postgres_case(
     return case
 
 
-#: The package's own cases: every in-memory store, correct or not. A caller's
-#: registry starts from these, so a run that judges any store also shows each
-#: violator below failing its property beside the correct store passing.
+#: The package's own cases: every in-memory store, correct or not. `plugin.py`
+#: registers these first in every run, so a run that judges any store also
+#: shows each violator below failing its property beside the correct store
+#: passing.
 MEMORY_CASES: tuple[Case, ...] = (
     _memory_case("correct", set(), MemoryStore),
     # Correct as well, and the only registered store whose conflict reports a

@@ -232,7 +232,9 @@ everywhere or nowhere. Nothing checks it.
   `pr-hygiene.yml` and `release.yml` are local jobs. The guards the first two
   run live under `scripts/`; the release tag verifier and version check are
   `.github/release/verify-tag.sh` and `.github/release/check-version.sh`,
-  written here and copied from nowhere.
+  written here and copied from nowhere. So are the stranger-shaped projects
+  and their runner under `.github/strangers/`, which the `installed wheel`
+  job runs against the wheel built at the head.
   - The guards under `scripts/` (and `.github/markdownlint.json`) are
     **byte-identical copies** of checkers maintained in a private repository,
     which a public repository's workflow cannot call. They are compared

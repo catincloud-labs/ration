@@ -1,10 +1,12 @@
-"""The cases a run judges, as its caller handed them to the suite.
+"""The cases a run judges, as the plugin handed them to the suite.
 
-The suite carries no registry of its own, because which stores a run judges is
-the caller's decision. This repository's caller registers the package's
-in-memory cases, DuckDB where its driver imports, and Postgres where a server is
-named. The caller calls `register` before collection, and the suite's
-`conftest.py` reads the registries back here when it parametrises a test.
+The suite carries no registry of its own, because which stores a run judges
+beside the package's own is the caller's decision. `plugin.py` registers the package's in-memory cases and
+frame codecs, and beside them the cases its caller returns: this repository's
+caller adds DuckDB where its driver imports, and Postgres where a server is
+named. The plugin calls `register` at `pytest_configure`, before collection,
+and the suite's `conftest.py` reads the registries back here when it
+parametrises a test.
 
 Deliberately a plain module rather than state on `conftest`, for the reason
 `declared.py` gives: pytest imports a conftest under a name of its own choosing,
@@ -44,7 +46,8 @@ def registered(fixture: str) -> tuple[Case, ...] | tuple[CodecCase, ...]:
     if not cases:
         raise LookupError(
             f"no case is registered for the `{fixture}` fixture, so a test "
-            "taking it would judge nothing. The caller registers its cases with "
-            "`ration.conformance.support.registry.register` before collection."
+            "taking it would judge nothing. The cases are registered by the "
+            "plugin: `pytest_plugins = [\"ration.conformance.plugin\"]` in the "
+            "caller's root `conftest.py`, or `-p ration.conformance.plugin`."
         )
     return cases
