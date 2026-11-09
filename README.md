@@ -263,14 +263,19 @@ known-negative that fails without the check beside a known-positive that passes
 with it. The known-negative is not a bad frame; it is a **reader without the
 check**, one per check, each the shape a shortcut takes:
 
-| Property | Hostile cases | The codec that must fail it |
-| --- | --- | --- |
-| The bytes present honour the declared length, exactly | truncated mid-header, truncated mid-body, length larger than present, length smaller than present | `unchecked-length` - trusts the transport, so a short header is an exception and a short body is misnamed; `ignores-trailing` - takes the declared body and discards the rest |
-| A flipped bit anywhere is refused as corruption | a bit flipped in the body, in the sequence, in the epoch, in the kind byte | `unchecked-crc` - carries the CRC and never compares it; `body-only-crc` - a CRC over the body alone, which leaves the header bare |
-| An unknown version is refused as that, before its layout is assumed | version ahead of the reader, version ahead with the CRC moved, version zero | `unchecked-version`; `crc-before-version` - every check present, only the order wrong |
-| An unregistered kind is refused | kind unknown to the registry, kind zero | `unchecked-kind` |
-| Exactly the next sequence, or a fresh epoch at zero | duplicated, skipped, behind, restart at a fresh epoch, an older epoch replayed, a new epoch not at zero, retry of a refused frame | `unchecked-sequence`; `counter-only` - 32 bits and no restart rule, so it turns the honest restart away; `sequences-before-checking` - the right rule, applied before the CRC has spoken |
-| Only a frame's canonical text is read, and any other string is refused as text | a character outside the alphabet, whitespace, a character outside ASCII, padding, the standard alphabet's `+` and `/`, a length one past a multiple of four, a second text of the same frame at every unused bit of both length classes; and a well-formed text of bad bytes, refused by the frame rather than the text | `lenient-text` - the standard library's default decode, which drops what it does not recognise; `library-strict` - its strict base64url setting, which still takes padding and both alphabets; `skips-text-decode` - hands the header to the frame reader undecoded; `accepts-non-canonical` - every character checked against base64url and the round trip skipped; `drops-dangling-character` - reads a dangling character as nothing, as Node's `Buffer` does; `collapses-layers` - answers the frame's refusals as the text's |
+| Frame property | What it fixes | Hostile cases | The codec that must fail it |
+| --- | --- | --- | --- |
+| 1 | The bytes present honour the declared length, exactly | truncated mid-header, truncated mid-body, length larger than present, length smaller than present | `unchecked-length` - trusts the transport, so a short header is an exception and a short body is misnamed; `ignores-trailing` - takes the declared body and discards the rest |
+| 2 | A flipped bit anywhere is refused as corruption | a bit flipped in the body, in the sequence, in the epoch, in the kind byte | `unchecked-crc` - carries the CRC and never compares it; `body-only-crc` - a CRC over the body alone, which leaves the header bare |
+| 3 | An unknown version is refused as that, before its layout is assumed | version ahead of the reader, version ahead with the CRC moved, version zero | `unchecked-version`; `crc-before-version` - every check present, only the order wrong |
+| 4 | An unregistered kind is refused | kind unknown to the registry, kind zero | `unchecked-kind` |
+| 5 | Exactly the next sequence, or a fresh epoch at zero | duplicated, skipped, behind, restart at a fresh epoch, an older epoch replayed, a new epoch not at zero, retry of a refused frame | `unchecked-sequence`; `counter-only` - 32 bits and no restart rule, so it turns the honest restart away; `sequences-before-checking` - the right rule, applied before the CRC has spoken |
+| 6 | Only a frame's canonical text is read, and any other string is refused as text | a character outside the alphabet, whitespace, a character outside ASCII, padding, the standard alphabet's `+` and `/`, a length one past a multiple of four, a second text of the same frame at every unused bit of both length classes; and a well-formed text of bad bytes, refused by the frame rather than the text | `lenient-text` - the standard library's default decode, which drops what it does not recognise; `library-strict` - its strict base64url setting, which still takes padding and both alphabets; `skips-text-decode` - hands the header to the frame reader undecoded; `accepts-non-canonical` - every character checked against base64url and the round trip skipped; `drops-dangling-character` - reads a dangling character as nothing, as Node's `Buffer` does; `collapses-layers` - answers the frame's refusals as the text's |
+
+The rows are **Frame property 1 to 6**, in this order, and that is the
+number each module in `tests/conformance/test_frame_*.py` cites. It is not
+the order in which `src/ration/frame.py` runs its seven checks, which is a
+different list and says so.
 
 One hostile case is separated by no registered reader: a character outside
 ASCII, which every reader here refuses as text because the standard library
