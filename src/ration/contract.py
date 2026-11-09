@@ -3,8 +3,15 @@
 This module states the contract, and the conformance suite under
 `tests/conformance/` decides whether a backend implements it. The substrate is
 one key at a time under compare-and-set against a version, and nothing more.
-Four properties hold of it, numbered here because the rest of this package and
-the suite cite them by number:
+
+The operation itself is stated first, and is not numbered: `compare_and_set`
+on a single key applies only at the expected version, the comparison and the
+write are one step, and a conflict is reported without writing. The suite
+decides it as two properties of its own, `compare-and-set` in
+`test_compare_and_set.py` and `atomicity` in `test_atomicity.py`.
+
+Four properties hold of the substrate besides, numbered here because the rest
+of this package and the suite cite them by number:
 
 1. The version rises per key and is never reused, not even after deletion.
 2. Expiry is evaluated by the store, against its own clock, when asked.
@@ -167,6 +174,11 @@ class Store(Protocol):
         ttl: float | None = None,
     ) -> Outcome:
         """Write `record` if and only if the key is still at `expected_version`.
+
+        The comparison and the write are one step: no other write to the key
+        lands between checking the version and writing, so two callers from one
+        version cannot both apply. A key not at `expected_version` returns a
+        `Conflict`, and nothing is written.
 
         A `record` of `None` deletes: the key becomes absent, and its version
         advances anyway, because property 1 says versions are never reused and
