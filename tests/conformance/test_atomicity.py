@@ -178,7 +178,7 @@ def test_two_writers_racing_from_one_version_do_not_both_apply(
 
 
 def _increment_once(store: Store, key: str, tag: str) -> None:
-    """Read, add one, compare-and-set; retry from the version a refusal reports.
+    """Read, add one, compare-and-set; on a refusal, retry from a fresh read.
 
     The same loop the hammer's workers run, lifted out so the stepped half below
     and the hammer increment the same way and differ only in who decides the
@@ -201,7 +201,7 @@ def _stepped_increment_loses_nothing(backend: BackendUnderTest) -> bool:
     the hammer is carrying the property alone. On a store that has one: writer A
     is parked at `_staged`, writer B runs to completion and is *waited for*, then
     A is released. A conforming store refuses A's stale comparison and A retries
-    from the version the refusal reports, so the counter reads two. The naive
+    from a fresh read, so the counter reads two. The naive
     store decided A's comparison before the seam and writes on top of B after it,
     so the counter reads one -- a lost update, in one step, on every run rather
     than on the runs where the scheduler happened to land there.

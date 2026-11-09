@@ -78,7 +78,10 @@ def test_the_write_lands_only_at_the_expected_version(
     refused = store.compare_and_set(key, created.version, None)
     assert isinstance(refused, Conflict)
     assert refused.version in versions_held
-    assert store.read(key).present
+    kept = store.read(key)
+    assert kept.record is not None
+    assert kept.record.payload == b"second"
+    assert kept.version == applied.version
 
     deleted = store.compare_and_set(key, applied.version, None)
     assert isinstance(deleted, Applied)

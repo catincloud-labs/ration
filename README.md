@@ -364,6 +364,7 @@ implementation per property, each breaking as little as it can:
 | --- | --- |
 | Compare-and-set applies only at the expected version | `create-always` - absence is not a version, so creation is an upsert |
 | ...and a conflict does not write | `conflict-writes` - reports the conflict honestly, writes anyway |
+| ...and a conflict carries a version the key has held | `echoes-expected` - hands the caller's expected version back, which the key may never have held |
 | The comparison and the write are one step | `naive` - read-then-write, exactly what the operation must not be |
 | Version monotonic, never reused, not even after deletion | `recycling` - drops the key's counter when the value goes |
 | ...and per key, not per store | `global-counter` - monotonic, never reused, and a statement about unrelated traffic |
@@ -407,8 +408,10 @@ share one snapshot, and only the `UPDATE` half gets `EvalPlanQual`.
 
 **Not a contract defect.** The contract requires a conflict to be reported
 *without writing*, which holds, and asks of the version it carries only that
-the key has held it, which holds too; `tests/conformance/test_compare_and_set.py`
-decides both, and accepts any version the key has held. Making it exact costs either a second round trip or an
+the key has held it, which holds too.
+`tests/conformance/test_compare_and_set.py` decides both, accepting any version
+the key has held, and `echoes-expected` is the store it rejects for reporting
+one the key never held. Making it exact costs either a second round trip or an
 `ON CONFLICT DO UPDATE` that **writes in order to read**, which is precisely
 what `conflict-writes` exists to fail. So the claims were corrected and the
 behaviour pinned by `tests/test_postgres_conflict_version.py`,

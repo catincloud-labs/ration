@@ -34,6 +34,7 @@ __all__ = [
     "ClientExpiryStore",
     "ConflictWritesStore",
     "CreateAlwaysStore",
+    "EchoesExpectedStore",
     "FailOpenStore",
     "GlobalCounterStore",
     "NaivePostgresStore",
@@ -101,6 +102,34 @@ class ConflictWritesStore(MemoryStore):
             if reading.version != expected_version:
                 return Conflict(reading.version)
             return applied
+
+
+class EchoesExpectedStore(MemoryStore):
+    """Violates: `compare-and-set`. A conflict carries the caller's own number back.
+
+    The comparison, the refusal and the write are all correct; only the version
+    in the refusal is wrong. It reports the version the caller expected, which
+    reads plausibly -- "you asked about this one" -- and which the key may never
+    have held. `Conflict` promises a version the key has held and nothing about
+    which, so a version it never held is how the field is got wrong, and this is
+    the shape a backend reaches by echoing its parameter instead of reading its
+    row.
+    """
+
+    def compare_and_set(
+        self,
+        key: str,
+        expected_version: int,
+        record: Record | None,
+        *,
+        ttl: float | None = None,
+    ) -> Outcome:
+        self._staged()
+        with self._lock:
+            reading = self._read_locked(key)
+            if reading.version != expected_version:
+                return Conflict(expected_version)
+            return self._commit_locked(key, record, ttl)
 
 
 class NaiveStore(MemoryStore):
