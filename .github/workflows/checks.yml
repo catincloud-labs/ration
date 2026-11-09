@@ -260,6 +260,51 @@ jobs:
           fi
           exit "$status"
 
+  # The plugin, judged from where a stranger meets it rather than from this
+  # tree: the wheel built at this commit, installed with its `conformance`
+  # extra into a fresh virtual environment under the runner's temp directory,
+  # and run by projects shaped like a stranger's (`.github/strangers/`). Each
+  # project is decided by its exit code: a store registered as correct that is
+  # not must fail; a required case of the stranger's that nothing judged,
+  # whether it was never registered or the suite was never collected, must be
+  # refused, and a required name of the package's own does not stand in; two
+  # cases under one name must be refused; and a correct store must pass, named
+  # beside the package's own cases. `arms.py` runs the refusals first and trusts the
+  # passing arm only in a run where each of them fired. No Postgres and no
+  # driver here, because the point is that the shipped suite runs with pytest
+  # alone. Advisory.
+  installed-wheel:
+    name: installed wheel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+
+      - name: The wheel, built at this commit
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip wheel --no-deps --wheel-dir "$RUNNER_TEMP/dist" .
+          ls -l "$RUNNER_TEMP/dist"
+
+      # One wheel, or the install below would be reading a guess.
+      - name: A fresh virtual environment outside the tree, with the wheel and its conformance extra
+        run: |
+          python -m venv "$RUNNER_TEMP/stranger"
+          shopt -s nullglob
+          wheels=("$RUNNER_TEMP"/dist/ration-*.whl)
+          if [ "${#wheels[@]}" -ne 1 ]; then
+            echo "::error::Expected one ration wheel in $RUNNER_TEMP/dist, found ${#wheels[@]}."
+            exit 1
+          fi
+          "$RUNNER_TEMP/stranger/bin/python" -m pip install "${wheels[0]}[conformance]"
+          "$RUNNER_TEMP/stranger/bin/python" -m pip list
+
+      - name: Stranger-shaped projects, each asserted by its exit code
+        run: python .github/strangers/arms.py --python "$RUNNER_TEMP/stranger/bin/python" --work "$RUNNER_TEMP/strangers"
+
   # A pull-request title becomes the merge commit history cites, so it takes
   # the conventional-commit form (`AGENTS.md`, Change workflow). Advisory.
   #

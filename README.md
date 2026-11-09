@@ -40,6 +40,8 @@ against, and about nothing else. A store's guarantee is shown by running the
 suite against that store; if you put `ration` in front of a store of your own,
 that run is yours to make. A store's own vendor test suite is evidence about
 the vendor, not about your deployment, and the same is true of this one.
+*Running the suite against your own store*, at the end of this file, is how to
+make that run.
 
 **Postgres passing is not Postgres being chosen.** The contract makes the store
 a conformance result, and a conformance result is evidence, not a decision.
@@ -803,6 +805,114 @@ same suite against a server that has finished starting is green.
 A run reports `xfailed` once per violator per property it is expected to break.
 Those are the suite working. A **passing** violator is reported as a failure,
 which is the only outcome that means the suite has stopped measuring anything.
+
+## Running the suite against your own store
+
+The suite ships in the package as `ration.conformance`, and a store of yours
+joins it through a pytest plugin, `ration.conformance.plugin`. The plugin has no
+entry point, so installing `ration` never enables it: a project that holds a
+lease with `ration` runs its own tests as it did. A project that judges a store
+installs the package with its `conformance` extra, from a clone at a release's
+tag as in *Versions and releases*, and enables the plugin by name. From the
+directory holding the clone:
+
+```sh
+pip install "./ration[conformance]"
+```
+
+A tag whose tree has `src/ration/conformance/plugin.py` has the plugin;
+`v0.1.0` does not.
+
+**Every run through the plugin judges the package's own cases beside yours.**
+They are the in-memory store, the correct store with an unusual answer, every
+violator in the table under *The first piece of work* but `postgres-naive`,
+which needs a server, and every frame codec.
+Each violator is strict-xfailed against the property it breaks, so a run in
+which one passes in your environment is red, whatever your store did. Frame
+codecs take no case of a caller's: the frame is this package's wire format and
+`ration.frame` its reader, and a hook for them would be a public name with
+nothing yet to carry.
+
+In the `conftest.py` at the root of the directory you run pytest from, enable
+the plugin and answer its one hook, `pytest_ration_cases`, with your cases.
+This is the shape `.github/strangers/common/stranger.py` builds for the
+`installed wheel` job, for a store in one process:
+
+```python
+import time
+
+from ration.conformance.support.backends import BackendUnderTest, Case
+from ration.conformance.support.faults import FaultInjector
+
+from yourpackage import YourStore  # a `ration.contract.Store`
+
+pytest_plugins = ["ration.conformance.plugin"]
+
+
+def your_case() -> Case:
+    def build() -> BackendUnderTest:
+        faults = FaultInjector(YourStore())
+        return BackendUnderTest(
+            case=case,
+            store=faults,
+            advance_store_time=time.sleep,
+            skew_client_clock=lambda _seconds: None,
+            partition=faults.partition,
+            ambiguity=faults.ambiguity,
+        )
+
+    case = Case(name="your-store", violates=frozenset(), build=build)
+    return case
+
+
+def pytest_ration_cases() -> list[Case]:
+    return [your_case()]
+```
+
+Then run the suite the package ships, naming the case the run must judge:
+
+```sh
+pytest --pyargs ration.conformance --ration-require your-store
+```
+
+The report header names the package's cases, yours and what is required, and
+each test's id names the case it ran.
+
+**`--ration-require NAME` is the switch that keeps a lost store from reading
+green.** Repeat it for each case the run must judge; it is modelled on this
+repository's `RATION_REQUIRE_POSTGRES`. If no collected test runs a case of
+yours by that name, because none was registered (a CI job that lost the
+variable naming your server, say), because the suite was not collected, or
+because `-k`, `-m` or a node id left it out, the run ends as a usage error,
+exit 4, before any test runs. A name of the package's own cases does not
+satisfy it, and a case named like one of the package's is refused, because the
+name is how the report and the switch tell cases apart.
+
+### The case contract
+
+A `Case` and the `BackendUnderTest` its `build` returns are in
+`ration.conformance.support.backends`; `FaultInjector` is in
+`ration.conformance.support.faults`.
+
+| Field | What it must do |
+| --- | --- |
+| `Case.name` | Name one case in the run. It is each test's id and what `--ration-require` takes. |
+| `Case.violates` | Name the properties the store is expected to fail, as each suite module's `conformance` marker names them; empty for a store you claim is correct. Each test of a named property is strict-xfailed, so a store that passes one is a failing run. A name no test declares marks nothing, and the check that catches one, `tests/test_the_suite_discriminates.py`, is this repository's and not in the package. |
+| `Case.build` | Return a fresh `BackendUnderTest`, called with no arguments for each test that runs the case. `key()` hands each build keys nothing else has touched, so a persistent store may serve every build. |
+| `case` | The `Case` it was built from. |
+| `store` | Your store, wrapped in `FaultInjector`, so `ambiguity` can lose a write's answer. |
+| `advance_store_time(seconds)` | Return once at least `seconds` of the store's own time has passed: `time.sleep` for a store that reads its own clock. The suite's leases last `REAL_TTL`, half a second, so the waits stay short. |
+| `skew_client_clock(seconds)` | Move the clock on the caller's side of the store. A store never told the caller's time takes a no-op, and that the expiry tests then hold trivially is the result, not a gap. |
+| `partition()` | A context manager inside which every read and write raises `Unreachable`, with the store reachable again after it. For a store with a server, point it somewhere that refuses a connection, as `postgres_case` in the same module does, so the suite sees your store translate the failure. `FaultInjector.partition` refuses on the store's behalf and shows only that the layers above it refuse. |
+| `ambiguity(applied=...)` | A context manager that makes the next write raise `Ambiguous`, having applied or not as `applied` says. Every registered case uses `FaultInjector.ambiguity`. |
+| `_stepped` | Leave it out. The stepped build parks an operation in the memory store's own `_staged` seam, which no other store has. A case without one skips the test that needs it, and atomicity is decided for it by the threaded probe, at the false-pass rate `test_atomicity.py` states; a probe that never raced reports a skip rather than a verdict. |
+
+**What a green run shows, and what it does not.** Your case passed every test
+of every property, in your environment, in a run in which the package's correct
+stores passed and each of its violators failed its own property. It shows
+nothing the suite does not decide: the gaps stated above, such as a version
+reused across a restore and a store only one process can open, are gaps for
+your store too.
 
 ## Licence
 
