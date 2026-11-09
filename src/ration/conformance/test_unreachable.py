@@ -10,6 +10,8 @@ update. Violated by `fail-open`.
 Note where the violator sits: in a wrapper, not in a store. Failing open is
 written in the layer someone adds *in front of* a correct store, after a
 partition caused an outage and refusing looked like the bug.
+
+Measures: src/ration/contract.py, property 3
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from __future__ import annotations
 import pytest
 
 from ration.contract import ABSENT, Applied, Record, Unreachable
-from tests.support.backends import BackendUnderTest
+from ration.conformance.support.backends import BackendUnderTest
 
 
 @pytest.mark.conformance("unreachable-refuses")

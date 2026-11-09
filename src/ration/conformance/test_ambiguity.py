@@ -20,6 +20,8 @@ because its token is already there from the earlier write.
 A conformance suite that decides whether a backend qualifies should not depend
 on a consumer's tests to defend the remedy it ships, so
 `test_a_rewriters_lost_answer_is_resolved` below reaches that case here.
+
+Measures: src/ration/contract.py, property 4
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ from __future__ import annotations
 import pytest
 
 from ration.contract import ABSENT, Ambiguous, Applied, Record, Resolution, resolve
-from tests.support.backends import BackendUnderTest
+from ration.conformance.support.backends import BackendUnderTest
 
 
 @pytest.mark.conformance("ambiguity-resolvable")

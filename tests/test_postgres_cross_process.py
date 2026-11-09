@@ -40,7 +40,7 @@ import pytest
 
 from ration.contract import ABSENT, Applied, Record
 from ration.postgres import PostgresStore
-from tests.support.backends import POSTGRES_DSN
+from tests.cases import POSTGRES_DSN
 from tests.support.crossprocess import worker_result
 
 pytestmark = pytest.mark.skipif(
@@ -48,7 +48,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 #: Deliberately the same arithmetic as the threaded hammer in
-#: `tests/conformance/test_atomicity.py` -- eight contenders, one hundred
+#: `src/ration/conformance/test_atomicity.py` -- eight contenders, one hundred
 #: increments each, eight hundred expected. The counts are matched so the two
 #: verdicts are comparable without translation: if this probe and that hammer
 #: ever disagree about the same store, the population is the only difference

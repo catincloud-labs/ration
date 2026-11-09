@@ -2,7 +2,7 @@
 
 Deliberately a plain module rather than state on `conftest`. pytest imports
 conftest under a name of its own choosing, so a test that did
-`from tests.conftest import ...` could bind a second, empty copy and assert
+`from ration.conformance.conftest import ...` could bind a second, empty copy and assert
 happily against nothing -- which is the exact failure this file exists to catch
 elsewhere.
 """

@@ -1,6 +1,6 @@
 """Making CPython switch threads finely enough to land in a microsecond window.
 
-Shared by `tests/conformance/test_atomicity.py` and the concurrency probes of
+Shared by `src/ration/conformance/test_atomicity.py` and the concurrency probes of
 the lease, pool and publish tests, and shared rather than copied because two
 copies of a calibration is one calibration and one stale number. The *counts*
 it was calibrated with stay in `test_atomicity.py`, where they were measured;
@@ -23,7 +23,7 @@ __all__ = ["PREEMPTION_INTERVAL", "preemptive"]
 #: Calibrated against the naive store: the value at which a known-bad
 #: implementation fails every run rather than most runs.
 #:
-#: The rates are in `tests/conformance/test_atomicity.py`, where they were
+#: The rates are in `src/ration/conformance/test_atomicity.py`, where they were
 #: measured, and are deliberately not repeated here.
 PREEMPTION_INTERVAL = 1e-6
 

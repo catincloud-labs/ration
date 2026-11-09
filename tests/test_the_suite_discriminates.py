@@ -2,8 +2,8 @@
 
 `AGENTS.md` states this repository's hardest rule -- a conformance suite that
 cannot reject is not a suite, and every property must have an implementation
-that violates it and is expected to fail. Everything else in `tests/` enforces
-that rule for the contract. This file enforces it for the suite, because a rule
+that violates it and is expected to fail. The suite in
+`src/ration/conformance/` enforces that rule for the contract. This file enforces it for the suite, because a rule
 that lives only in a document is a rule someone has to remember.
 
 The individual "can it reject" answers are given elsewhere, by strict xfail: a
@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import pytest
 
-from tests.support.backends import CASES, REQUIRE_POSTGRES, Case
-from tests.support.codecs import CODECS, CodecCase
-from tests.support.declared import DECLARED_BY_FIXTURE, DECLARED_PROPERTIES, UNDECLARED
+from ration.conformance.support.backends import Case
+from ration.conformance.support.codecs import CODECS, CodecCase
+from ration.conformance.support.declared import DECLARED_BY_FIXTURE, DECLARED_PROPERTIES, UNDECLARED
+from tests.cases import CASES, REQUIRE_POSTGRES
 
 #: The two registries, by the fixture that runs each. The frame suite is held
 #: to the rule above exactly as the store suite is, and by the same assertions

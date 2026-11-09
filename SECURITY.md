@@ -31,7 +31,7 @@ assert that it is safe.
   input surface. The header is checked before the body, in the order the
   module docstring states, and the body is returned to the caller
   uninterpreted: decoding a payload is the caller's code, not this package's.
-  `tests/test_frame.py` and `tests/conformance/test_frame_*.py` hold the
+  `tests/test_frame.py` and `src/ration/conformance/test_frame_*.py` hold the
   hostile cases the decoder is expected to refuse.
 - **`ration.postgres` connects to the DSN you pass it** and runs fixed SQL with
   bound parameters. A DSN can carry a credential; that credential is yours, and

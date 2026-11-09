@@ -1,7 +1,7 @@
 """The coordination contract, expressed as types.
 
 This module states the contract, and the conformance suite under
-`tests/conformance/` decides whether a backend implements it. The substrate is
+`src/ration/conformance/` decides whether a backend implements it. The substrate is
 one key at a time under compare-and-set against a version, and nothing more.
 
 The operation itself is stated first, and is not numbered: `compare_and_set`

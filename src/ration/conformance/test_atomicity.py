@@ -43,6 +43,8 @@ Two checks, doing different jobs:
   reads two; the naive store applies it and the counter reads one, every run.
   The hammer follows as the probe, and it is the only instrument on a store
   with no seam.
+
+Measures: src/ration/contract.py, the operation (atomicity)
 """
 
 from __future__ import annotations
@@ -52,9 +54,9 @@ import threading
 import pytest
 
 from ration.contract import ABSENT, Applied, Record, Store
-from tests.support.backends import BackendUnderTest
-from tests.support.gate import Gate
-from tests.support.preemption import preemptive
+from ration.conformance.support.backends import BackendUnderTest
+from ration.conformance.support.gate import Gate
+from ration.conformance.support.preemption import preemptive
 
 #: Calibrated against the naive store, because that is the only thing that can
 #: calibrate it: the counts are whatever makes the known-bad implementation fail
@@ -67,7 +69,7 @@ from tests.support.preemption import preemptive
 #: its write is around a microsecond and the interpreter was sampling every five
 #: milliseconds, so the probe was not unlucky; it was not looking.
 #:
-#: With preemption forced to a microsecond (`tests/support/preemption.py`) the
+#: With preemption forced to a microsecond (`src/ration/conformance/support/preemption.py`) the
 #: same counts caught it **500 times in 500 runs**, at about 8ms a run. That is
 #: the stated rate: no false pass observed in 500 calibration runs, which is a
 #: measurement and not a guarantee -- it is why this probe is not what the
@@ -82,7 +84,7 @@ from tests.support.preemption import preemptive
 HAMMER_THREADS = 8
 HAMMER_ITERATIONS = 100
 
-#: The interval itself lives in `tests/support/preemption.py`, because the
+#: The interval itself lives in `src/ration/conformance/support/preemption.py`, because the
 #: lease service's concurrency probe needs the same mechanism. The counts above
 #: stay here, with the run that measured them.
 

@@ -43,7 +43,7 @@ import pytest
 
 from ration.addressing import key_for, resolve
 from ration.postgres import PostgresStore
-from tests.support.backends import POSTGRES_DSN
+from tests.cases import POSTGRES_DSN
 from tests.support.crossprocess import (
     announce_role,
     renew_with_version,

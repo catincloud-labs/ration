@@ -22,7 +22,7 @@ frame's refusals into the text's. None of them is contrived; each is what the
 tree would contain if the check had been left for later.
 
 Where a violator must break two things to break one, it says so and declares
-both in `tests/support/codecs.py`.
+both in `src/ration/conformance/support/codecs.py`.
 """
 
 from __future__ import annotations

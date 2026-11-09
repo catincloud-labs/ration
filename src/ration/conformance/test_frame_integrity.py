@@ -8,6 +8,8 @@ seen nothing, so the sequence check cannot catch what the CRC missed: a
 flipped sequence bit either refuses as corruption or reaches the decoder, and
 there is no third outcome to hide behind. Violated by `unchecked-crc` and by
 `body-only-crc`.
+
+Measures: README.md, Frame property 2
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from ration.frame import CRC_MISMATCH, HEADER_SIZE, Frame, FrameRefusal, Sequence
-from tests.support.codecs import BODY, CodecUnderTest
+from ration.conformance.support.codecs import BODY, CodecUnderTest
 
 #: Header offsets, from the layout in `ration.frame`'s docstring.
 KIND = 1

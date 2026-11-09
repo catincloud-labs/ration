@@ -18,12 +18,12 @@ Two kinds of existing payload are outside that rule on purpose:
   lease's, a publication's generation -- but it crosses between nodes through
   the store rather than as a message. Property 1 of the contract makes that
   version rise per key and never be reused
-  (`tests/conformance/test_version.py`), so it already orders the record, and
+  (`src/ration/conformance/test_version.py`), so it already orders the record, and
   a frame's sequence beside it would be a second ordering of one record.
 - **The telemetry an existing shipper sends between nodes**, which carries no
   claim, so the rule does not bring it in. Framing it anyway would need a
   sequence rule this module does not have: a receiver here accepts exactly the
-  next count (`tests/conformance/test_frame_sequence.py`), so one lost batch
+  next count (`src/ration/conformance/test_frame_sequence.py`), so one lost batch
   would leave every later batch refused as a gap until the sender started a
   new epoch or the receiver a fresh ledger.
 
@@ -125,7 +125,7 @@ character outside its alphabet silently and returns the bytes the text held
 before the character was added, so a reader built on it accepts a text no
 sender wrote. Its strict base64url setting, `validate=True` with base64url's
 `altchars`, still takes padding, the standard alphabet beside base64url's own,
-and set unused bits. `tests/conformance/test_frame_text.py` holds readers of
+and set unused bits. `src/ration/conformance/test_frame_text.py` holds readers of
 both shapes against the suite, beside one that skips the decode, one that
 checks every character and skips the round trip, one that reads a dangling
 character as nothing, and one that answers the frame's refusals as the
@@ -464,7 +464,7 @@ class FrameCodec:
     A class rather than two functions so that the steps are visible as the
     order the module docstring states, and so that an implementation which
     skips one -- the shape every shortcut takes -- is a subclass overriding
-    one method, which is what `tests/frame_violators.py` holds against the
+    one method, which is what `src/ration/conformance/frame_violators.py` holds against the
     suite. Nothing here is a seam that exists only for a test: every method is
     a check the reader performs.
     """

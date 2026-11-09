@@ -7,6 +7,8 @@ must refuse as a version this reader does not speak, not as a corrupted v1
 frame -- the first refusal tells an operator to upgrade, the second tells
 them to look at the wire. Violated by `unchecked-version` and by
 `crc-before-version`, which has every check and only the order wrong.
+
+Measures: README.md, Frame property 3
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from __future__ import annotations
 import pytest
 
 from ration.frame import FRAME_VERSION, UNKNOWN_FRAME_VERSION, Frame, FrameRefusal, Sequence
-from tests.support.codecs import CodecUnderTest
+from ration.conformance.support.codecs import CodecUnderTest
 
 
 @pytest.mark.conformance("frame-version")

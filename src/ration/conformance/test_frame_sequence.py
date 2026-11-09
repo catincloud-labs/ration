@@ -11,6 +11,8 @@ that remembers, so it names its sender on every decode. Violated by
 `unchecked-sequence`, by `counter-only`, which has no restart rule, and by
 `sequences-before-checking`, which has the right rule and applies it too
 early.
+
+Measures: README.md, Frame property 5
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from ration.frame import (
     FrameRefusal,
     Sequence,
 )
-from tests.support.codecs import CodecUnderTest
+from ration.conformance.support.codecs import CodecUnderTest
 
 SENDER = "one-sender"
 

@@ -34,7 +34,7 @@ from ration.frame import (
     Sequence,
     SequenceLedger,
 )
-from tests.frame_violators import (
+from ration.conformance.frame_violators import (
     BodyOnlyCrcCodec,
     CounterOnlyCodec,
     CrcBeforeVersionCodec,
@@ -128,7 +128,8 @@ class CodecUnderTest:
         original CRC, which is what a frame corrupted after it was checksummed
         looks like.
         """
-        v, k, value, ln, crc = _HEADER.unpack_from(frame)
+        header: tuple[int, int, int, int, int] = _HEADER.unpack_from(frame)
+        v, k, value, ln, crc = header
         new_body = frame[HEADER_SIZE:] if body is None else body
         if version is not None:
             v = version

@@ -24,11 +24,12 @@ from ration.addressing import announce, resolve as resolve_role
 from ration.contract import Resolution, Unreachable, resolve
 from ration.memory import MemoryStore
 from ration.publish import UNPUBLISHED, Publication, current, key_for, publish
-from tests.support.backends import CASES, REAL_TTL, BackendUnderTest
-from tests.support.faults import FaultInjector
-from tests.support.gate import Gate
-from tests.support.preemption import preemptive
-from tests.violators import NaiveStore
+from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
+from ration.conformance.support.faults import FaultInjector
+from ration.conformance.support.gate import Gate
+from ration.conformance.support.preemption import preemptive
+from ration.conformance.violators import NaiveStore
+from tests.cases import CASES
 
 #: Filtered rather than listed, so a store added to the registry is exercised
 #: here without this file changing.

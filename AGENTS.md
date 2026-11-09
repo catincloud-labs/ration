@@ -31,9 +31,9 @@ while reporting success.
 
 ## The README describes; the suite decides
 
-The contract is stated in `src/ration/contract.py` and decided by
-`tests/conformance/`. **Where the README and the suite disagree, the suite is
-the contract**, and the README is the thing to fix.
+The contract is stated in `src/ration/contract.py` and decided by the suite
+the package ships, `src/ration/conformance/`. **Where the README and the suite
+disagree, the suite is the contract**, and the README is the thing to fix.
 
 - **A change to what the suite decides changes the README in the same pull
   request.** The README describes the mechanism and the reasons the suite
@@ -249,7 +249,9 @@ everywhere or nowhere. Nothing checks it.
 - **The coding standard is read at class A for `src`**, by the `power of ten`
   job (`scripts/check_power_of_ten.py`): cyclomatic ceiling 10, strict typing,
   no recursion, no `while True`, no `global`, no blind `except`. `tests/` and
-  `scripts/` are class C at ceiling 15. The check is the **one reader of
+  `scripts/` are class C at ceiling 15, and so are the suite's `test_*.py`
+  modules and its `conftest.py` under `src/ration/conformance/`, which the
+  check reads as test paths wherever they sit. The check is the **one reader of
   suppressions**: a deviation is a `noqa` or a `type: ignore[code]` that names
   the rule with its reason on the same line, and one that is unused or gives no
   reason is red. No baseline marker stands in this tree, and the ratchet
@@ -318,11 +320,11 @@ Listed so their absence reads as a decision rather than an oversight:
 
 - **No `CONTRIBUTING.md`.** The workflow is above; a second file repeating it is
   a second thing to keep true. A fork's pull request runs the full suite.
-- **No test module per backend.** `tests/conformance/` is one module per
+- **No test module per backend.** `src/ration/conformance/` is one module per
   *property*, and a property is the unit the suite reports a verdict on. That is
   not filing: a store expected to fail a property is marked `xfail(strict=True)`
   against every test carrying it, so a test some violator quietly passes becomes
   a failure. Splitting a property into tests that different violators fail
   differently is the shape that breaks.
 - **No fixture that makes a backend pass.** A backend is added to `CASES` in
-  `tests/support/backends.py` and runs what is already there.
+  `tests/cases.py` and runs what is already there.

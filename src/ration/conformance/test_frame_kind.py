@@ -12,6 +12,8 @@ that never checks the kind decodes every REGISTERED kind perfectly well, so it
 passes the arm it does not violate while failing the arm it does. `AGENTS.md`
 names that shape ("splitting a property into tests that different violators
 fail differently").
+
+Measures: README.md, Frame property 4
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from ration.frame import (
     FrameRefusal,
     Sequence,
 )
-from tests.support.codecs import CodecUnderTest
+from ration.conformance.support.codecs import CodecUnderTest
 
 
 @pytest.mark.conformance("frame-kind")

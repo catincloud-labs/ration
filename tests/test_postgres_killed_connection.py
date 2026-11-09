@@ -37,7 +37,8 @@ either: it wraps `Store` and raises `Unreachable` itself, so it never enters
 `_connect` or `_execute` and cannot express this defect at any setting.
 
 **Every test here also runs against stores built wrong on purpose**, by the
-mechanism `conftest.py` uses for the contract and for the same reason. Each test
+mechanism the suite's `src/ration/conformance/conftest.py` uses for the
+contract and for the same reason. Each test
 declares the one rule it holds; each store in `_BUILDS` names the rules it
 breaks and is `xfail(strict=True)` against every test holding one, so a wrong
 store that passes is a failure. They are not registered in `CASES`, because
@@ -56,7 +57,7 @@ from psycopg.conninfo import make_conninfo
 
 from ration.contract import ABSENT, Applied, Outcome, Reading, Record, Unreachable
 from ration.postgres import PostgresStore, _LostOnReuse
-from tests.support.backends import POSTGRES_DSN
+from tests.cases import POSTGRES_DSN
 
 #: Where nothing listens. The same address `backends.py` partitions with, for
 #: the same reason: a DSN that failed to *parse* would prove something else.

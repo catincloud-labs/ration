@@ -26,6 +26,8 @@ The ttl is a fraction of a second because `advance_store_time` is a **real
 sleep** for a real backend. A fake clock skips a minute for free; `now()` on a
 server cannot be moved at all, which is the constraint a non-fake backend
 imposes on this file.
+
+Measures: src/ration/contract.py, property 2
 """
 
 from __future__ import annotations
@@ -35,8 +37,8 @@ import threading
 import pytest
 
 from ration.contract import ABSENT, Applied, Reading, Record
-from tests.support.backends import REAL_TTL, BackendUnderTest
-from tests.support.gate import Gate
+from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
+from ration.conformance.support.gate import Gate
 
 
 @pytest.mark.conformance("store-evaluated-expiry")

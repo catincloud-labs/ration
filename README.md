@@ -72,7 +72,7 @@ for the epoch a restarted sender needs, and a lease version already is one. See
 The repository is decomposed by state ownership: the substrate and the
 services share it because they own the same state. The contract they all rest
 on is stated once, in `src/ration/contract.py`, and decided by
-`tests/conformance/`:
+`src/ration/conformance/`:
 
 | Property | What it fixes |
 | --- | --- |
@@ -204,11 +204,11 @@ transport, no consumer.
 Two kinds of existing payload are outside the rule on purpose. **A record in
 the coordination store** can carry a claim, since its version is a fencing
 token, but it crosses between nodes through the store rather than as a
-message, and property 1 already orders it (`tests/conformance/test_version.py`);
+message, and property 1 already orders it (`src/ration/conformance/test_version.py`);
 a frame's sequence beside it would be a second ordering of one record. **The
 telemetry an existing shipper sends** carries no claim, and the frame's
 sequence rule would break it: a receiver accepts exactly the next count
-(`tests/conformance/test_frame_sequence.py`), so one lost batch would leave
+(`src/ration/conformance/test_frame_sequence.py`), so one lost batch would leave
 every later batch refused as a gap until the sender started a new epoch or the
 receiver a fresh ledger.
 
@@ -273,21 +273,21 @@ check**, one per check, each the shape a shortcut takes:
 | 6 | Only a frame's canonical text is read, and any other string is refused as text | a character outside the alphabet, whitespace, a character outside ASCII, padding, the standard alphabet's `+` and `/`, a length one past a multiple of four, a second text of the same frame at every unused bit of both length classes; and a well-formed text of bad bytes, refused by the frame rather than the text | `lenient-text` - the standard library's default decode, which drops what it does not recognise; `library-strict` - its strict base64url setting, which still takes padding and both alphabets; `skips-text-decode` - hands the header to the frame reader undecoded; `accepts-non-canonical` - every character checked against base64url and the round trip skipped; `drops-dangling-character` - reads a dangling character as nothing, as Node's `Buffer` does; `collapses-layers` - answers the frame's refusals as the text's |
 
 The rows are **Frame property 1 to 6**, in this order, and that is the
-number each module in `tests/conformance/test_frame_*.py` cites. It is not
+number each module in `src/ration/conformance/test_frame_*.py` cites. It is not
 the order in which `src/ration/frame.py` runs its seven checks, which is a
 different list and says so.
 
 One hostile case is separated by no registered reader: a character outside
 ASCII, which every reader here refuses as text because the standard library
 raises on it. A reader that normalised the text to NFKC first would fail it;
-none is registered, and `tests/conformance/test_frame_text.py` says why.
+none is registered, and `src/ration/conformance/test_frame_text.py` says why.
 
 Same mechanism as the store suite, not a copy of it: one marker, one strict
 xfail, one set of bookkeeping assertions in
 `tests/test_the_suite_discriminates.py`, parametrised over two registries. A
 run reports one `xfailed` line per codec per property it drops, which is one per
-class in `tests/frame_violators.py`
-(`grep -c '^class .*(FrameCodec)' tests/frame_violators.py`); the run is the
+class in `src/ration/conformance/frame_violators.py`
+(`grep -c '^class .*(FrameCodec)' src/ration/conformance/frame_violators.py`); the run is the
 count, not this sentence.
 
 **What building it found.** The first run of the suite had
@@ -297,7 +297,7 @@ frame accepted, and a reader that consumes a sequence on refusal breaks the
 retry after *every* refusal, so it failed length, integrity, version and kind
 for a defect that is entirely about the ledger. A violator that fails
 everything proves nothing about which check caught it. The fix is in
-`tests/support/codecs.py`: every property that is not about sequence is
+`src/ration/conformance/support/codecs.py`: every property that is not about sequence is
 decided against a ledger that has seen nothing, so a sequence refusal cannot
 masquerade as theirs, and the one property that is about the ledger names its
 sender on every decode. The same run had `unchecked-crc` red on the
@@ -414,10 +414,10 @@ share one snapshot, and only the `UPDATE` half gets `EvalPlanQual`.
 **Not a contract defect.** The contract requires a conflict to be reported
 *without writing*, which holds, and asks of the version it carries only that
 the key has held it, which holds too.
-`tests/conformance/test_compare_and_set.py` decides both, accepting any version
+`src/ration/conformance/test_compare_and_set.py` decides both, accepting any version
 the key has held, and `echoes-expected` is the store it rejects for reporting
 one the key never held. **The acceptance has a store of its own.**
-`previous-version` (`tests/permitted.py`) is registered with no violations and,
+`previous-version` (`src/ration/conformance/permitted.py`) is registered with no violations and,
 once a key has been written, answers every refusal with the version the key
 held before its current one. Every other correct store answers a refusal that
 races nothing with the current version. So a test tightened back to the
@@ -425,7 +425,7 @@ current version fails `previous-version` and no other registered store, and
 loosening the assertion is a change the suite can see being undone. To watch
 it, replace the assertion after the stale-expectation refusal with
 `assert refused == Conflict(created.version)` and run
-`pytest -rA tests/conformance/test_compare_and_set.py`. Making a conflict's
+`pytest -rA src/ration/conformance/test_compare_and_set.py`. Making a conflict's
 version exact costs either a second round trip or an
 `ON CONFLICT DO UPDATE` that **writes in order to read**, which is precisely
 what `conflict-writes` exists to fail. So the claims were corrected and the
@@ -473,7 +473,7 @@ demand: a violating implementation that is never made to race inside it has
 not been shown to survive one. So threads are a **probe, not a gate**: they
 reach non-atomicity inside a real store that no client-side stepper can, and
 they carry a false-pass rate the suite states rather than implies. The order of
-the two checks is in `tests/conformance/test_atomicity.py`'s docstring.
+the two checks is in `src/ration/conformance/test_atomicity.py`'s docstring.
 
 **The first calibration is the finding worth keeping.** On the interpreter's
 default switch interval, the hammer **never once** caught the naive backend: it
@@ -482,7 +482,7 @@ naive read and its write is about a microsecond and the interpreter was
 switching every five milliseconds, so the probe was not unlucky; it was not
 looking. Forcing preemption to a microsecond, the same counts caught it **every
 run**. The thread count, the iteration count and both rates live in
-`tests/conformance/test_atomicity.py`, beside the probe they describe, and are
+`src/ration/conformance/test_atomicity.py`, beside the probe they describe, and are
 deliberately not repeated here. That rate is a **measurement, not a
 guarantee**: no false pass was observed, which is not the same as none being
 possible, and it is precisely why the property does not rest on it. The naive
@@ -555,7 +555,7 @@ does not fail at the second host. It fails at the second **process**, which is
 where a pool's contenders live.
 
 **This is not a defect the contract can name, and the contract should not grow
-one.** Every violator in `tests/violators.py` is wrong *logically*: it computes
+one.** Every violator in `src/ration/conformance/violators.py` is wrong *logically*: it computes
 an answer the contract forbids, in one process, where the suite is looking.
 DuckDB is wrong about **deployment topology**, which the contract deliberately
 does not govern. Adding a property for it would be inventing a clause with no
@@ -763,8 +763,9 @@ does not carry it and its release run did not compare its version; from a
 clone at `main`, `bash .github/release/check-version.sh v0.1.0` admits it.
 
 **Do not install by the bare name.** `ration` on PyPI is an unrelated project.
-This package is not published to a registry: the wheel would carry
-`src/ration` and not the suite that judges it, and the suite is the point.
+This package is not published to a registry. Its wheel carries the suite that
+judges a store, as `ration.conformance`, and the suite's one dependency, pytest,
+is the `conformance` extra rather than a dependency of the package.
 
 ## Running it
 

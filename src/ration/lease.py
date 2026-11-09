@@ -27,7 +27,7 @@ a renew whose answer was lost as `APPLIED` on the evidence of the *earlier*
 write, and the holder would be told it had time it did not have. The token
 identifies a writer, not a write. `resolve` in `contract.py` tests the version
 first, which property 1 makes decisive, and both
-`tests/conformance/test_ambiguity.py` and `tests/test_lease.py` pin the case.
+`src/ration/conformance/test_ambiguity.py` and `tests/test_lease.py` pin the case.
 The contract needs nothing more for it: the information is in the store, and
 only the order of reading it matters.
 

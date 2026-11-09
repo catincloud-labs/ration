@@ -5,6 +5,8 @@ academic. Two consequences rest here: the version *is* the generation number
 the published-state surface (`publish.py`) needs, and it is the fencing token that lets a protected resource reject a stalled holder waking up
 with a stale claim. A reused version makes that holder indistinguishable from
 the current one. Violated by `recycling` and by `global-counter`.
+
+Measures: src/ration/contract.py, property 1
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from __future__ import annotations
 import pytest
 
 from ration.contract import ABSENT, Applied, Record
-from tests.support.backends import BackendUnderTest
+from ration.conformance.support.backends import BackendUnderTest
 
 
 @pytest.mark.conformance("version-monotonic")

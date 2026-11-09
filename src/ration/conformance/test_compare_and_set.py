@@ -9,6 +9,8 @@ property is marked strict-xfail against every test carrying it, so splitting the
 assertions into a test per clause would require each violator to fail all of
 them -- and `create-always` is correct about deletion, which is precisely why it
 is a useful violator. The property is the unit the suite reports on.
+
+Measures: src/ration/contract.py, the operation (compare-and-set)
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from __future__ import annotations
 import pytest
 
 from ration.contract import ABSENT, Applied, Conflict, Record
-from tests.support.backends import BackendUnderTest
+from ration.conformance.support.backends import BackendUnderTest
 
 
 @pytest.mark.conformance("compare-and-set")
