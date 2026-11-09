@@ -82,6 +82,16 @@ A later frame version leans on it:
 
 Only then is the frame handed back, and only then does the ledger move.
 
+**This order is not the frame property numbering.** The conformance suite
+cites *Frame property 1* to *6*, numbered in `README.md`'s frame table, and a
+property is what a reader must refuse rather than the step that refuses it.
+Against the list above: property 1, the declared length, is checks 1, 3 and 5;
+property 2, a flipped bit, is check 4; property 3, an unknown version, is
+check 2; property 4, an unregistered kind, is check 6; property 5, the
+sequence, is check 7; and property 6, the canonical text, belongs to the text
+form below, whose refusal comes before any of the seven, which then run on the
+bytes the text holds unchanged.
+
 ## The text form, for a frame that travels in a request header
 
 A route that takes no HTTP body can still carry a frame, in a request header.
