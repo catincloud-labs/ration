@@ -1,7 +1,7 @@
 """The cases a run judges, as the plugin handed them to the suite.
 
-The suite carries no registry of its own, because which stores a run judges is
-the caller's decision. `plugin.py` registers the package's in-memory cases and
+The suite carries no registry of its own, because which stores a run judges
+beside the package's own is the caller's decision. `plugin.py` registers the package's in-memory cases and
 frame codecs, and beside them the cases its caller returns: this repository's
 caller adds DuckDB where its driver imports, and Postgres where a server is
 named. The plugin calls `register` at `pytest_configure`, before collection,

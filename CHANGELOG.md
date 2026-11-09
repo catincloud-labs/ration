@@ -325,6 +325,26 @@ cited a moved path are listed beside the docstrings.
   `conftest.py` enables the plugin and returns `CASES` (#21). A caller's own
   list need not start from `MEMORY_CASES`, since the plugin registers them
   first; the two now say so.
+- **"which stores a run judges is the caller's decision"** in the docstring of
+  `src/ration/conformance/support/registry.py`, and **"which cases a run
+  judges is the caller's decision"** in the docstring of `tests/cases.py`,
+  both from `f99e485` (2026-11-09T20:52:08Z). Read dead 2026-11-09 against the
+  tree this entry's commit leaves, where `ration.conformance.plugin` fills the
+  suite's registries in every run: the package's own cases and frame codecs,
+  and beside them the stores its caller returns from the hook
+  `pytest_ration_cases`. This repository's root `conftest.py` enables the
+  plugin and returns `CASES` (#21). The package's own cases are no longer the
+  caller's to decide, so both now say which cases beside the package's own;
+  found by the cold review of this entry's pull request.
+- **"which the root `conftest.py` registers with that suite"** in the
+  docstring of `tests/__init__.py`, from `bc4001f` (2026-11-09T21:14:03Z).
+  Read dead 2026-11-09 against the tree this entry's commit leaves, where
+  `ration.conformance.plugin` fills the suite's registries in every run: the
+  package's own cases and frame codecs, and beside them the stores its caller
+  returns from the hook `pytest_ration_cases`. This repository's root
+  `conftest.py` enables the plugin and returns `CASES` (#21). The plugin
+  registers the cases the root `conftest.py` returns, and the sentence now
+  says the root `conftest.py` hands them to the suite through it.
 
 ### Paths only
 

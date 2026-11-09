@@ -1,7 +1,8 @@
 """Every store this repository's run judges, and what each is expected to fail.
 
 The package builds each case and ships its own in-memory ones; which cases a
-run judges is the caller's decision, and this file is this repository's. It
+run judges beside those is the caller's decision, and this file is this
+repository's. It
 starts from the package's `MEMORY_CASES` -- the in-memory store, the correct
 store with an unusual answer, and the violators -- and adds the backends that
 are not fakes: DuckDB wherever its driver imports, and Postgres with its naive
