@@ -32,8 +32,9 @@ class PreviousVersionStore(MemoryStore):
 
     `Conflict` promises a version the key has held and not its current one, and
     `PostgresStore` uses that latitude when two writers race. This store uses it
-    on every refusal, racing or not: once a key has been written, the version a
-    refusal reports is always one the key held and never the one it holds now.
+    on every refusal of a key that has been written, racing or not: the version
+    such a refusal reports is always one the key held and never the one it
+    holds now.
     Before the first write the key has held only `ABSENT`, so that is the answer.
 
     The previous version is recorded at the moment a write lands rather than

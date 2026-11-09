@@ -305,7 +305,8 @@ def _postgres_case(
 CASES: list[Case] = [
     _memory_case("correct", set(), MemoryStore),
     # Correct as well, and the only registered store whose conflict reports a
-    # version the key held before its current one. It is what tells the
+    # version the key held before its current one even when nothing races it
+    # (`postgres` does so only for the loser of a race). It is what tells the
     # compare-and-set test's "any version the key has held" from "the current
     # version": tighten that assertion and this case alone turns red.
     _memory_case("previous-version", set(), PreviousVersionStore),

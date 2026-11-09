@@ -105,9 +105,10 @@ is a version the key has held. Under concurrency `PostgresStore` reports the
 version the loser came *from*, and the contract permits it; a caller that needs
 the current version reads. The compare-and-set test accepts any version the key
 has held, and `previous-version` (`tests/permitted.py`), registered with no
-violations, is the correct store that holds it to that: it answers every
-refusal with the version the key held before its current one, so the test
-tightened to the current version fails it and no other registered store. The
+violations, is the correct store that holds it to that: once a key has been
+written, it answers every refusal with the version the key held before its
+current one, so the test tightened to the current version fails it and no
+other registered store. The
 Postgres behaviour is pinned, deterministically, by
 `tests/test_postgres_conflict_version.py::test_a_losing_update_reports_the_version_it_came_from`
 and `tests/test_postgres_conflict_version.py::test_a_losing_create_reports_absence`.
