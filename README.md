@@ -416,7 +416,17 @@ share one snapshot, and only the `UPDATE` half gets `EvalPlanQual`.
 the key has held it, which holds too.
 `tests/conformance/test_compare_and_set.py` decides both, accepting any version
 the key has held, and `echoes-expected` is the store it rejects for reporting
-one the key never held. Making it exact costs either a second round trip or an
+one the key never held. **The acceptance has a store of its own.**
+`previous-version` (`tests/permitted.py`) is registered with no violations and,
+once a key has been written, answers every refusal with the version the key
+held before its current one. Every other correct store answers a refusal that
+races nothing with the current version. So a test tightened back to the
+current version fails `previous-version` and no other registered store, and
+loosening the assertion is a change the suite can see being undone. To watch
+it, replace the assertion after the stale-expectation refusal with
+`assert refused == Conflict(created.version)` and run
+`pytest -rA tests/conformance/test_compare_and_set.py`. Making a conflict's
+version exact costs either a second round trip or an
 `ON CONFLICT DO UPDATE` that **writes in order to read**, which is precisely
 what `conflict-writes` exists to fail. So the claims were corrected and the
 behaviour pinned by `tests/test_postgres_conflict_version.py`,
