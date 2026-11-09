@@ -40,10 +40,14 @@ import uuid
 from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from ration.contract import Store
 from ration.memory import MemoryStore
-from ration.postgres import PostgresStore
+
+if TYPE_CHECKING:
+    # An annotation only, so the suite imports no driver; see `postgres_case`.
+    from ration.postgres import PostgresStore
 
 try:
     from ration.duckdb_store import DuckDBStore

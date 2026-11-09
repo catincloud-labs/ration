@@ -44,16 +44,16 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
 
 - **"This package is not published to a registry: the wheel would carry
   `src/ration` and not the suite that judges it, and the suite is the
-  point."** The second and third sentences of the paragraph headed "Do not
-  install by the bare name", in this wording from `9ada7a1`
-  (2026-10-29T00:51:42Z), the commit that published the tree. Read dead
-  2026-11-09 against the tree this entry's commit leaves, where the
-  conformance suite, its violators and its support modules are the package
-  `ration.conformance`, under `src/ration/conformance/`, and this repository's
-  registry of stores is `tests/cases.py` (#20). The wheel now carries the
-  suite. The paragraph still says the package is not published to a registry,
-  which stays true, and now says the wheel carries the suite as
-  `ration.conformance`, with pytest as its `conformance` extra.
+  point."** The third sentence of the paragraph headed "Do not install by the
+  bare name", in this wording from `9ada7a1` (2026-10-29T00:51:42Z), the
+  commit that published the tree. Read dead 2026-11-09 against the tree this
+  entry's commit leaves, where the conformance suite, its violators and its
+  support modules are the package `ration.conformance`, under
+  `src/ration/conformance/`, and this repository's registry of stores is
+  `tests/cases.py` (#20). The wheel now carries the suite. The paragraph still
+  says the package is not published to a registry, which stays true, and now
+  says the wheel carries the suite as `ration.conformance`, with pytest as its
+  `conformance` extra.
 
 ### Paths to the suite
 
@@ -116,7 +116,7 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
 
 - **"Nothing is built or pushed to a registry: the wheel would carry
   `src/ration` and not the suite that judges it (README, "Versions and
-  releases")."** The header's fourth sentence, in this wording from `c65667b`
+  releases")."** The header's third sentence, in this wording from `c65667b`
   (2026-11-01T02:13:19Z). Read dead 2026-11-09 against the tree this entry's
   commit leaves, where the conformance suite, its violators and its support
   modules are the package `ration.conformance`, under
@@ -164,8 +164,9 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   `src/ration/conformance/`, and this repository's registry of stores is
   `tests/cases.py` (#20). Each path now reads as it moved, by the rule in the
   README's *Paths to the suite* entry above, and the **Describes** list gains
-  `tests/cases.py`. The **Reviewed** line is unchanged: it is a reading of its
-  own day, and re-reading the page at a new head is separate work (#18).
+  `src/ration/conformance/postgres_violators.py` and `tests/cases.py`. The
+  **Reviewed** line is unchanged: it is a reading of its own day, and
+  re-reading the page at a new head is separate work (#18).
 
 ## pyproject.toml
 
@@ -212,8 +213,9 @@ cited a moved path are listed beside the docstrings.
   `ration.conformance`, under `src/ration/conformance/`, and this repository's
   registry of stores is `tests/cases.py` (#20). The mechanism and its
   docstring are now `src/ration/conformance/conftest.py`, where the paragraph
-  says each fixture runs what its caller registered; `tests/conftest.py` now
-  only registers this repository's cases.
+  says each fixture runs what its caller registered. `tests/conftest.py` is
+  gone: this repository's cases are registered by the root `conftest.py`, so a
+  run of one suite module by path is handed them too.
 - **`The conformance suite.`** with **"Every property in `conformance/` ships
   alongside an implementation in `violators.py` that breaks exactly that
   property and is expected to fail it"** The docstring of `tests/__init__.py`,
@@ -237,8 +239,11 @@ cited a moved path are listed beside the docstrings.
   commit leaves, where the conformance suite, its violators and its support
   modules are the package `ration.conformance`, under
   `src/ration/conformance/`, and this repository's registry of stores is
-  `tests/cases.py` (#20). The state is now filled by
-  `ration.conformance.conftest`, and the example names that module.
+  `tests/cases.py` (#20). The state is now filled by the suite's own conftest,
+  which this repository's run imports as `ration.conformance.conftest`, so
+  that import binds the same module and no longer illustrates the hazard. The
+  sentence now states the hazard without an example: the name pytest gives a
+  conftest depends on the import mode and the rootdir.
 - **"by the mechanism `conftest.py` uses for the contract"** The docstring of
   `tests/test_postgres_killed_connection.py`, from `9ada7a1`
   (2026-10-29T00:51:42Z). Read dead 2026-11-09 against the tree this entry's

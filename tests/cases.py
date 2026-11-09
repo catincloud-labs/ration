@@ -22,7 +22,7 @@ from ration.conformance.support.backends import (
     duckdb_case,
     postgres_case,
 )
-from ration.conformance.violators import NaivePostgresStore
+from ration.conformance.postgres_violators import NaivePostgresStore
 from ration.postgres import PostgresStore
 
 __all__ = ["CASES", "POSTGRES_DSN", "REQUIRE_POSTGRES"]

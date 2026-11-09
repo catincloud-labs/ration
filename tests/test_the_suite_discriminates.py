@@ -3,8 +3,14 @@
 `AGENTS.md` states this repository's hardest rule -- a conformance suite that
 cannot reject is not a suite, and every property must have an implementation
 that violates it and is expected to fail. The suite in
-`src/ration/conformance/` enforces that rule for the contract. This file enforces it for the suite, because a rule
-that lives only in a document is a rule someone has to remember.
+`src/ration/conformance/` enforces that rule for the contract. This file
+enforces it for the suite, because a rule that lives only in a document is a
+rule someone has to remember.
+
+Every assertion here reads the registries the suite was handed, through
+`registered`, rather than the lists this repository built them from. A case
+dropped between the two would otherwise leave its property with no violator in
+the run while this file still counted one.
 
 The individual "can it reject" answers are given elsewhere, by strict xfail: a
 violator that passes its own property is a failing test. What is left over is
@@ -17,15 +23,15 @@ from __future__ import annotations
 import pytest
 
 from ration.conformance.support.backends import Case
-from ration.conformance.support.codecs import CODECS, CodecCase
+from ration.conformance.support.codecs import CodecCase
 from ration.conformance.support.declared import DECLARED_BY_FIXTURE, DECLARED_PROPERTIES, UNDECLARED
-from tests.cases import CASES, REQUIRE_POSTGRES
+from ration.conformance.support.registry import FIXTURES, registered
+from tests.cases import REQUIRE_POSTGRES
 
 #: The two registries, by the fixture that runs each. The frame suite is held
 #: to the rule above exactly as the store suite is, and by the same assertions
 #: rather than a second copy of them.
-Registry = list[Case] | list[CodecCase]
-REGISTRIES: dict[str, Registry] = {"backend": CASES, "codec": CODECS}
+Registry = tuple[Case, ...] | tuple[CodecCase, ...]
 
 
 def _claimed(registry: Registry) -> set[str]:
@@ -44,9 +50,9 @@ def test_every_conformance_test_declares_the_property_it_decides() -> None:
     )
 
 
-@pytest.mark.parametrize("fixture", sorted(REGISTRIES))
+@pytest.mark.parametrize("fixture", sorted(FIXTURES))
 def test_every_property_the_suite_tests_has_a_violator(fixture: str) -> None:
-    orphans = _declared(fixture) - _claimed(REGISTRIES[fixture])
+    orphans = _declared(fixture) - _claimed(registered(fixture))
     assert orphans == set(), (
         f"{sorted(orphans)} are checked by tests that nothing is expected to "
         "fail. A property with no violator is indistinguishable from one whose "
@@ -54,9 +60,9 @@ def test_every_property_the_suite_tests_has_a_violator(fixture: str) -> None:
     )
 
 
-@pytest.mark.parametrize("fixture", sorted(REGISTRIES))
+@pytest.mark.parametrize("fixture", sorted(FIXTURES))
 def test_every_violator_names_a_property_the_suite_actually_tests(fixture: str) -> None:
-    phantoms = _claimed(REGISTRIES[fixture]) - _declared(fixture)
+    phantoms = _claimed(registered(fixture)) - _declared(fixture)
     assert phantoms == set(), (
         f"{sorted(phantoms)} are declared violated by some implementation, but "
         "no test that runs it decides them. A renamed property retires its "
@@ -75,14 +81,14 @@ def test_the_two_registries_do_not_share_a_property_name() -> None:
     assert DECLARED_PROPERTIES == _declared("backend") | _declared("codec")
 
 
-@pytest.mark.parametrize("fixture", sorted(REGISTRIES))
+@pytest.mark.parametrize("fixture", sorted(FIXTURES))
 def test_the_suite_is_run_against_something_expected_to_pass(fixture: str) -> None:
     """A suite that fails everything is as uninformative as one that passes everything.
 
     Rejection is only evidence if something is not rejected, so at least one
     registered implementation must be expected to survive the whole contract.
     """
-    clean = [case.name for case in REGISTRIES[fixture] if not case.violates]
+    clean = [case.name for case in registered(fixture) if not case.violates]
     assert clean, (
         "every registered implementation is expected to fail something, so a "
         "run in which they all fail proves nothing about any of them"
@@ -104,7 +110,7 @@ def test_a_real_backend_is_present_where_one_is_required() -> None:
     """
     if not REQUIRE_POSTGRES:
         return
-    names = [case.name for case in CASES]
+    names = [case.name for case in registered("backend")]
     assert "postgres" in names, (
         "RATION_REQUIRE_POSTGRES is set, so a real backend was expected in the "
         f"registry and only these were built: {names}. A green run without it "
@@ -112,7 +118,7 @@ def test_a_real_backend_is_present_where_one_is_required() -> None:
     )
 
 
-@pytest.mark.parametrize("fixture", sorted(REGISTRIES))
+@pytest.mark.parametrize("fixture", sorted(FIXTURES))
 def test_no_property_is_claimed_by_a_case_that_is_otherwise_correct(fixture: str) -> None:
     """The registry says what it means, in both directions.
 
@@ -120,7 +126,7 @@ def test_no_property_is_claimed_by_a_case_that_is_otherwise_correct(fixture: str
     contract. There is no third state, and this is the assertion that stops one
     being introduced by a blank field.
     """
-    for case in REGISTRIES[fixture]:
+    for case in registered(fixture):
         assert isinstance(case.violates, frozenset), case.name
         assert all(prop for prop in case.violates), (
             f"{case.name} declares an empty property name, which matches no "

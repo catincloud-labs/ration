@@ -70,7 +70,7 @@ include = [
 
 [tool.pytest.ini_options]
 # The suite first, from the package it ships in, then this repository's own
-# tests. `tests/conftest.py` hands the suite this repository's cases before
+# tests. The root `conftest.py` hands the suite this repository's cases before
 # either is collected.
 testpaths = ["src/ration/conformance", "tests"]
 # This repository's tests import `tests.cases` and `tests.support` by package

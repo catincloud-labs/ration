@@ -8,6 +8,7 @@
   `src/ration/conformance/`, `src/ration/conformance/support/backends.py`,
   `src/ration/conformance/support/codecs.py`,
   `src/ration/conformance/violators.py`,
+  `src/ration/conformance/postgres_violators.py`,
   `src/ration/conformance/permitted.py`,
   `src/ration/conformance/frame_violators.py`, `tests/cases.py`,
   `tests/test_lease.py`, `tests/test_pool.py`, `tests/test_addressing.py`,
@@ -61,7 +62,7 @@ The registries are the `CASES` list in `tests/cases.py`, which starts from
 the package's `MEMORY_CASES` in `src/ration/conformance/support/backends.py`,
 and the `CODECS` list in `src/ration/conformance/support/codecs.py`; each entry
 names an implementation and the properties it is expected to break.
-`tests/conftest.py` hands both to the suite. Some entries span several lines,
+The repository's root `conftest.py` hands both to the suite. Some entries span several lines,
 so print each with its following lines:
 
 ```sh

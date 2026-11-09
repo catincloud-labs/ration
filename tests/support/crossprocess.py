@@ -18,7 +18,7 @@ from typing import Callable
 
 from ration.contract import Applied, Record, Store
 from ration.postgres import PostgresStore
-from ration.conformance.violators import NaivePostgresStore
+from ration.conformance.postgres_violators import NaivePostgresStore
 
 __all__ = [
     "STORES",

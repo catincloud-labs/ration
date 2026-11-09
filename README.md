@@ -765,7 +765,10 @@ clone at `main`, `bash .github/release/check-version.sh v0.1.0` admits it.
 **Do not install by the bare name.** `ration` on PyPI is an unrelated project.
 This package is not published to a registry. Its wheel carries the suite that
 judges a store, as `ration.conformance`, and the suite's one dependency, pytest,
-is the `conformance` extra rather than a dependency of the package.
+is the `conformance` extra rather than a dependency of the package. The one
+module of the suite that needs more is `ration.conformance.postgres_violators`,
+the Postgres violator, which needs `psycopg` and is imported only by a caller
+that registers it.
 
 ## Running it
 
