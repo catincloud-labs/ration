@@ -6,8 +6,8 @@
   `src/ration/frame.py`, `src/ration/postgres.py`,
   `src/ration/duckdb_store.py`, `src/ration/memory.py`, `tests/conformance/`,
   `tests/support/backends.py`, `tests/support/codecs.py`,
-  `tests/violators.py`, `tests/frame_violators.py`, `tests/test_lease.py`,
-  `tests/test_pool.py`, `tests/test_addressing.py`,
+  `tests/violators.py`, `tests/permitted.py`, `tests/frame_violators.py`,
+  `tests/test_lease.py`, `tests/test_pool.py`, `tests/test_addressing.py`,
   `tests/test_addressing_cross_process.py`, `tests/test_publish.py`,
   `tests/test_frame.py`, `tests/test_postgres_conflict_version.py`,
   `tests/test_duckdb_single_process.py`,
@@ -103,7 +103,12 @@ them is a change to `src/ration/contract.py`, and so to the contract.
 **A conflict's version is not the key's current version.** `Conflict.version`
 is a version the key has held. Under concurrency `PostgresStore` reports the
 version the loser came *from*, and the contract permits it; a caller that needs
-the current version reads. Pinned, deterministically, by
+the current version reads. The compare-and-set test accepts any version the key
+has held, and `previous-version` (`tests/permitted.py`), registered with no
+violations, is the correct store that holds it to that: it answers every
+refusal with the version the key held before its current one, so the test
+tightened to the current version fails it and no other registered store. The
+Postgres behaviour is pinned, deterministically, by
 `tests/test_postgres_conflict_version.py::test_a_losing_update_reports_the_version_it_came_from`
 and `tests/test_postgres_conflict_version.py::test_a_losing_create_reports_absence`.
 

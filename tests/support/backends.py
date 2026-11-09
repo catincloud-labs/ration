@@ -1,9 +1,9 @@
 """Every implementation the suite runs against, and what each is expected to fail.
 
 The suite's job is not to validate a backend. It is to **discriminate between
-backends**, so the registry below is the suite's actual subject: one store that
-should pass everything, a set that should each fail a named property and pass
-the rest, and the backends that are not fakes at all.
+backends**, so the registry below is the suite's actual subject: in-memory
+stores that should pass everything, a set that should each fail a named
+property and pass the rest, and the backends that are not fakes at all.
 
 A new backend is added here and runs what is already written. It does not get
 tests of its own, and if it needs a special case to pass, that is a finding
@@ -45,6 +45,7 @@ except ImportError:  # pragma: no cover - exercised by not having the driver
     DUCKDB_AVAILABLE = False
 else:
     DUCKDB_AVAILABLE = True
+from tests.permitted import PreviousVersionStore
 from tests.support.clock import FakeClock
 from tests.support.faults import FaultInjector
 from tests.support.gate import Gate
@@ -303,6 +304,11 @@ def _postgres_case(
 
 CASES: list[Case] = [
     _memory_case("correct", set(), MemoryStore),
+    # Correct as well, and the only registered store whose conflict reports a
+    # version the key held before its current one. It is what tells the
+    # compare-and-set test's "any version the key has held" from "the current
+    # version": tighten that assertion and this case alone turns red.
+    _memory_case("previous-version", set(), PreviousVersionStore),
     _memory_case("create-always", {"compare-and-set"}, CreateAlwaysStore),
     _memory_case("echoes-expected", {"compare-and-set"}, EchoesExpectedStore),
     _memory_case(
