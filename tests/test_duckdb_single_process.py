@@ -18,7 +18,7 @@ fail at the second host. It fails at the second **process**, which is why
 on it even on one box.
 
 **This is the sharpest thing this repository can say about its own
-instruments.** Every violator in `tests/violators.py` is wrong *logically*: it
+instruments.** Every violator in `src/ration/conformance/violators.py` is wrong *logically*: it
 computes an answer the contract forbids, in one process, where the suite is
 looking. DuckDB is wrong *structurally*, and the in-process suite is exactly the
 wrong shape to notice. A backend can be correct in one interpreter and
@@ -49,7 +49,7 @@ import tempfile
 import pytest
 
 from ration.contract import ABSENT, Applied, Record, Unreachable
-from tests.support.backends import DUCKDB_AVAILABLE
+from ration.conformance.support.backends import DUCKDB_AVAILABLE
 from tests.support.crossprocess import duckdb_open_attempt, duckdb_store_attempt
 
 pytestmark = pytest.mark.skipif(

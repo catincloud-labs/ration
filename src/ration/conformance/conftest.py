@@ -11,23 +11,29 @@ drifted, or an assertion stopped reaching -- looks exactly like a suite that is
 working.
 
 There are two registries and one mechanism. A test that takes `backend` runs
-against every store in `tests/support/backends.py`; a test that takes `codec`
-runs against every frame codec in `tests/support/codecs.py`. The marker, the
-xfail and the bookkeeping are the same for both, because the frame contract asks
-of the frame suite exactly what the store contract asks of the store suite: a
-known-negative seen failing beside a known-positive seen passing.
+against every store its caller registered; a test that takes `codec` runs
+against every frame codec its caller registered. Both are read from
+`support/registry.py`, which the caller fills before collection. The marker,
+the xfail and the bookkeeping are the same for both, because the frame contract
+asks of the frame suite exactly what the store contract asks of the store
+suite: a known-negative seen failing beside a known-positive seen passing.
+
+This file is the suite's own `conftest.py`, so pytest loads it wherever it
+collects the modules beside it.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from tests.support.backends import CASES, BackendUnderTest, Case
-from tests.support.codecs import CODECS, CodecCase, CodecUnderTest
-from tests.support.declared import DECLARED_BY_FIXTURE, DECLARED_PROPERTIES, UNDECLARED
-
-#: Each registry, by the fixture name that runs it.
-_REGISTRIES = {"backend": CASES, "codec": CODECS}
+from ration.conformance.support.backends import BackendUnderTest, Case
+from ration.conformance.support.codecs import CodecCase, CodecUnderTest
+from ration.conformance.support.declared import (
+    DECLARED_BY_FIXTURE,
+    DECLARED_PROPERTIES,
+    UNDECLARED,
+)
+from ration.conformance.support.registry import FIXTURES, registered
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -38,8 +44,9 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    for fixture, registry in _REGISTRIES.items():
+    for fixture in FIXTURES:
         if fixture in metafunc.fixturenames:
+            registry = registered(fixture)
             metafunc.parametrize(
                 fixture,
                 registry,
@@ -53,7 +60,7 @@ def pytest_collection_modifyitems(
 ) -> None:
     for item in items:
         names = getattr(item, "fixturenames", ())
-        for fixture in _REGISTRIES:
+        for fixture in FIXTURES:
             if fixture not in names:
                 continue
             marker = item.get_closest_marker("conformance")

@@ -3,7 +3,7 @@
 Not a conformance test, and deliberately not: it declares no contract property,
 because the contract requires a conflict to be *reported without writing* and
 asks of the version it carries only that the key has held it, which
-`tests/conformance/test_compare_and_set.py` decides. Which held version a
+`src/ration/conformance/test_compare_and_set.py` decides. Which held version a
 loser is handed is not asked, and adding a property here would add a
 guarantee before a consumer needs one, and would narrow the field of backends
 for a number nobody reads.
@@ -32,7 +32,7 @@ import pytest
 
 from ration.contract import ABSENT, Applied, Conflict, Record
 from ration.postgres import PostgresStore
-from tests.support.backends import POSTGRES_DSN
+from tests.cases import POSTGRES_DSN
 
 pytestmark = pytest.mark.skipif(
     not POSTGRES_DSN, reason="no Postgres configured; RATION_POSTGRES_DSN is unset"

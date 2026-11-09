@@ -11,7 +11,7 @@ than by arguing from the store's documentation, and this module is what lets the
 suite run against DuckDB.
 
 **It is also the best available test of the suite itself.** Every violator in
-`tests/violators.py` is wrong *logically* -- it computes the wrong answer, and it
+`src/ration/conformance/violators.py` is wrong *logically* -- it computes the wrong answer, and it
 is wrong in one process where the suite can see it. DuckDB is different in kind:
 it is capable of being **correct in one process and structurally unusable in
 two**, which is precisely the caveat `tests/test_postgres_cross_process.py` was
@@ -207,7 +207,7 @@ class DuckDBStore:
             # seeded version**, and a suite that only seeds its key and then
             # races from that version never races the INSERT branch at all.
             # `test_two_creators_racing_from_absence_do_not_both_apply`, in
-            # `tests/conformance/test_atomicity.py`, is the case that does.
+            # `src/ration/conformance/test_atomicity.py`, is the case that does.
             #
             # This is the one place the backend interprets rather than
             # reports, and it is load-bearing. Two exact exception types are

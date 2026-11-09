@@ -4,9 +4,13 @@
 - **Describes:** `src/ration/contract.py`, `src/ration/lease.py`,
   `src/ration/pool.py`, `src/ration/addressing.py`, `src/ration/publish.py`,
   `src/ration/frame.py`, `src/ration/postgres.py`,
-  `src/ration/duckdb_store.py`, `src/ration/memory.py`, `tests/conformance/`,
-  `tests/support/backends.py`, `tests/support/codecs.py`,
-  `tests/violators.py`, `tests/permitted.py`, `tests/frame_violators.py`,
+  `src/ration/duckdb_store.py`, `src/ration/memory.py`,
+  `src/ration/conformance/`, `src/ration/conformance/support/backends.py`,
+  `src/ration/conformance/support/codecs.py`,
+  `src/ration/conformance/violators.py`,
+  `src/ration/conformance/postgres_violators.py`,
+  `src/ration/conformance/permitted.py`,
+  `src/ration/conformance/frame_violators.py`, `tests/cases.py`,
   `tests/test_lease.py`, `tests/test_pool.py`, `tests/test_addressing.py`,
   `tests/test_addressing_cross_process.py`, `tests/test_publish.py`,
   `tests/test_frame.py`, `tests/test_postgres_conflict_version.py`,
@@ -19,7 +23,7 @@
   skipped where a store has no in-process seam for the deterministic gate
 
 This page **describes and decides nothing.** The contract is stated in
-`src/ration/contract.py` and decided by `tests/conformance/`; where this page
+`src/ration/contract.py` and decided by `src/ration/conformance/`; where this page
 and the suite disagree, the suite is the contract and this page is the defect
 (`AGENTS.md`, *The README describes; the suite decides*). Its job is narrower
 than the README's: to put every guarantee the substrate and its services make
@@ -48,19 +52,21 @@ one with, for example:
 pytest -rA "tests/test_pool.py::test_a_pool_grants_exactly_its_capacity"
 ```
 
-**A test under `tests/conformance/` runs against every registered
+**A test under `src/ration/conformance/` runs against every registered
 implementation, not just the correct one.** The correct cases must pass it. An
 implementation built wrong on purpose and registered against that test's
 property is marked `xfail(strict=True)`, so it must fail, and a violator that
 passes is a red run. That is the sense in which a property here is *shown*: a
 store that keeps it passes and a store built to break exactly it is rejected.
-The registries are the `CASES` list in `tests/support/backends.py` and the
-`CODECS` list in `tests/support/codecs.py`; each entry names an implementation
-and the properties it is expected to break. Some entries span several lines,
+The registries are the `CASES` list in `tests/cases.py`, which starts from
+the package's `MEMORY_CASES` in `src/ration/conformance/support/backends.py`,
+and the `CODECS` list in `src/ration/conformance/support/codecs.py`; each entry
+names an implementation and the properties it is expected to break.
+The repository's root `conftest.py` hands both to the suite. Some entries span several lines,
 so print each with its following lines:
 
 ```sh
-grep -n -A3 "_case(" tests/support/backends.py tests/support/codecs.py
+grep -n -A3 "_case(" src/ration/conformance/support/backends.py tests/cases.py src/ration/conformance/support/codecs.py
 ```
 
 The Postgres cases are registered only when `RATION_POSTGRES_DSN` names a
@@ -68,7 +74,7 @@ server; the README's *Running it* gives the commands. Without one, a run drops
 the only store more than one process can share, and the conformance tests
 below are then evidence about the in-memory fakes alone.
 
-Tests outside `tests/conformance/` run against a correct store. Where one of
+Tests outside `src/ration/conformance/` run against a correct store. Where one of
 them stands on concurrency, it is a **threaded probe**: claimants churning
 against the store, counting any grant made twice. A probe that finds nothing
 has not shown there was nothing to find, so each is paired with a **negative
@@ -88,12 +94,12 @@ it, and the operation itself is a fifth:
 
 | Guarantee | What is refused | Shown by | Violators it rejects |
 | --- | --- | --- | --- |
-| A write applies only at the expected version. Absence is a version (`ABSENT`), so creation is a compare-and-set like any other | An upsert: creating a key that already exists. A write that reports a conflict and lands anyway. A conflict carrying a version the key never held | `tests/conformance/test_compare_and_set.py::test_the_write_lands_only_at_the_expected_version` | `create-always`, `conflict-writes`, `echoes-expected` |
-| The comparison and the write are one step: two writers racing from one version do not both apply, and neither do two creators racing from absence | Read-then-write | `tests/conformance/test_atomicity.py::test_two_writers_racing_from_one_version_do_not_both_apply` (a deterministic gate, where a store has an in-process seam), `tests/conformance/test_atomicity.py::test_concurrent_increments_lose_nothing` (a threaded probe, the only instrument where it has none), `tests/conformance/test_atomicity.py::test_two_creators_racing_from_absence_do_not_both_apply` | `naive`, `conflict-writes`, `postgres-naive` |
-| 1. The version rises per key and is never reused, not even after the key is deleted | A counter that restarts when the value goes; a counter shared across keys | `tests/conformance/test_version.py::test_versions_rise_per_key_and_are_never_reused` | `recycling`, `global-counter` |
-| 2. Expiry is evaluated by the store, against its own clock, at the moment it is asked. `ttl` is a duration; there is no parameter for a caller's deadline | The caller's clock; a store clock read early and acted on later | `tests/conformance/test_expiry.py::test_expiry_is_decided_by_the_store_when_it_is_asked` | `client-expiry`, `stale-clock` |
-| 3. A caller that cannot reach the store has acquired nothing: `Unreachable` is raised, not returned | Treating silence as "nothing there" | `tests/conformance/test_unreachable.py::test_a_caller_that_cannot_reach_the_store_acquires_nothing` | `fail-open` |
-| 4. A write whose answer was lost is resolvable by reading, because the caller's token is in the store. `resolve` tests the version before the token, so a caller rewriting a key it already holds is not credited with its earlier write | Keeping the payload and losing the token; deciding by token alone | `tests/conformance/test_ambiguity.py::test_a_lost_answer_is_recovered_by_reading`, `tests/conformance/test_ambiguity.py::test_a_rewriters_lost_answer_is_resolved` | `token-dropping` |
+| A write applies only at the expected version. Absence is a version (`ABSENT`), so creation is a compare-and-set like any other | An upsert: creating a key that already exists. A write that reports a conflict and lands anyway. A conflict carrying a version the key never held | `src/ration/conformance/test_compare_and_set.py::test_the_write_lands_only_at_the_expected_version` | `create-always`, `conflict-writes`, `echoes-expected` |
+| The comparison and the write are one step: two writers racing from one version do not both apply, and neither do two creators racing from absence | Read-then-write | `src/ration/conformance/test_atomicity.py::test_two_writers_racing_from_one_version_do_not_both_apply` (a deterministic gate, where a store has an in-process seam), `src/ration/conformance/test_atomicity.py::test_concurrent_increments_lose_nothing` (a threaded probe, the only instrument where it has none), `src/ration/conformance/test_atomicity.py::test_two_creators_racing_from_absence_do_not_both_apply` | `naive`, `conflict-writes`, `postgres-naive` |
+| 1. The version rises per key and is never reused, not even after the key is deleted | A counter that restarts when the value goes; a counter shared across keys | `src/ration/conformance/test_version.py::test_versions_rise_per_key_and_are_never_reused` | `recycling`, `global-counter` |
+| 2. Expiry is evaluated by the store, against its own clock, at the moment it is asked. `ttl` is a duration; there is no parameter for a caller's deadline | The caller's clock; a store clock read early and acted on later | `src/ration/conformance/test_expiry.py::test_expiry_is_decided_by_the_store_when_it_is_asked` | `client-expiry`, `stale-clock` |
+| 3. A caller that cannot reach the store has acquired nothing: `Unreachable` is raised, not returned | Treating silence as "nothing there" | `src/ration/conformance/test_unreachable.py::test_a_caller_that_cannot_reach_the_store_acquires_nothing` | `fail-open` |
+| 4. A write whose answer was lost is resolvable by reading, because the caller's token is in the store. `resolve` tests the version before the token, so a caller rewriting a key it already holds is not credited with its earlier write | Keeping the payload and losing the token; deciding by token alone | `src/ration/conformance/test_ambiguity.py::test_a_lost_answer_is_recovered_by_reading`, `src/ration/conformance/test_ambiguity.py::test_a_rewriters_lost_answer_is_resolved` | `token-dropping` |
 
 **What the substrate refuses by having no place for it.** `Store` has no second
 key, no ordering across keys, no watch, no queue and no lock held across a
@@ -104,7 +110,7 @@ them is a change to `src/ration/contract.py`, and so to the contract.
 is a version the key has held. Under concurrency `PostgresStore` reports the
 version the loser came *from*, and the contract permits it; a caller that needs
 the current version reads. The compare-and-set test accepts any version the key
-has held, and `previous-version` (`tests/permitted.py`), registered with no
+has held, and `previous-version` (`src/ration/conformance/permitted.py`), registered with no
 violations, is the correct store that holds it to that: once a key has been
 written, it answers every refusal with the version the key held before its
 current one, so the test tightened to the current version fails it and no
@@ -238,12 +244,12 @@ purpose under the same strict xfail:
 
 | Guarantee | Shown by | Violators it rejects |
 | --- | --- | --- |
-| The bytes present honour the declared length, exactly: a short header, a short body and trailing bytes are each refused | `tests/conformance/test_frame_length.py::test_the_bytes_present_must_honour_the_declared_length` | `unchecked-length`, `ignores-trailing` |
-| A flipped bit anywhere, header or body, is refused as corruption: the CRC-32 covers the header as well as the body | `tests/conformance/test_frame_integrity.py::test_a_flipped_bit_anywhere_is_refused_as_corruption` | `unchecked-crc`, `body-only-crc` |
-| An unknown frame version is refused as that, before its layout is assumed | `tests/conformance/test_frame_version.py::test_an_unknown_version_is_refused_before_its_layout_is_assumed` | `unchecked-version`, `crc-before-version` |
-| A kind the registry does not name is refused | `tests/conformance/test_frame_kind.py::test_an_unregistered_kind_is_refused` | `unchecked-kind` |
-| A receiver accepts exactly the next sequence, or a higher epoch at count zero; a duplicate, a gap, a replay and an older epoch are refused, and the ledger moves on acceptance only | `tests/conformance/test_frame_sequence.py::test_exactly_the_next_sequence_or_a_fresh_epoch_at_zero` | `unchecked-sequence`, `counter-only`, `sequences-before-checking` |
-| Only a frame's one canonical text is read; any other string is refused as `malformed-text` before a frame check runs, and a fault in the bytes under a well-formed text is refused by the frame | `tests/conformance/test_frame_text.py::test_only_the_canonical_text_is_read_as_a_frame` | `lenient-text`, `library-strict`, `skips-text-decode`, `accepts-non-canonical`, `drops-dangling-character`, `collapses-layers` |
+| The bytes present honour the declared length, exactly: a short header, a short body and trailing bytes are each refused | `src/ration/conformance/test_frame_length.py::test_the_bytes_present_must_honour_the_declared_length` | `unchecked-length`, `ignores-trailing` |
+| A flipped bit anywhere, header or body, is refused as corruption: the CRC-32 covers the header as well as the body | `src/ration/conformance/test_frame_integrity.py::test_a_flipped_bit_anywhere_is_refused_as_corruption` | `unchecked-crc`, `body-only-crc` |
+| An unknown frame version is refused as that, before its layout is assumed | `src/ration/conformance/test_frame_version.py::test_an_unknown_version_is_refused_before_its_layout_is_assumed` | `unchecked-version`, `crc-before-version` |
+| A kind the registry does not name is refused | `src/ration/conformance/test_frame_kind.py::test_an_unregistered_kind_is_refused` | `unchecked-kind` |
+| A receiver accepts exactly the next sequence, or a higher epoch at count zero; a duplicate, a gap, a replay and an older epoch are refused, and the ledger moves on acceptance only | `src/ration/conformance/test_frame_sequence.py::test_exactly_the_next_sequence_or_a_fresh_epoch_at_zero` | `unchecked-sequence`, `counter-only`, `sequences-before-checking` |
+| Only a frame's one canonical text is read; any other string is refused as `malformed-text` before a frame check runs, and a fault in the bytes under a well-formed text is refused by the frame | `src/ration/conformance/test_frame_text.py::test_only_the_canonical_text_is_read_as_a_frame` | `lenient-text`, `library-strict`, `skips-text-decode`, `accepts-non-canonical`, `drops-dangling-character`, `collapses-layers` |
 
 And against the reference codec alone:
 
@@ -292,8 +298,8 @@ Stated so each reads as a known absence rather than a discovery:
   in-process seam (`postgres`, `postgres-naive`, `duckdb`), atomicity is decided
   by the threaded probe, and a probe that finds nothing has not shown there was
   nothing. A run reports the gate as skipped for those cases.
-- **Any store not registered in `tests/support/backends.py`.** A store's
-  guarantee is shown by running this suite against that store.
+- **Any store not registered in `tests/cases.py`.** A store's guarantee is
+  shown by running this suite against that store.
 - **A network partition.** The cross-process tests run on one machine.
 
 ## When a sentence on this page dies

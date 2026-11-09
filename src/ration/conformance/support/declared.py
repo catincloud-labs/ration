@@ -1,10 +1,10 @@
 """What collection observed, kept somewhere both the plugin and a test can read.
 
-Deliberately a plain module rather than state on `conftest`. pytest imports
-conftest under a name of its own choosing, so a test that did
-`from tests.conftest import ...` could bind a second, empty copy and assert
-happily against nothing -- which is the exact failure this file exists to catch
-elsewhere.
+Deliberately a plain module rather than state on `conftest`. pytest imports a
+conftest under a name of its own choosing, which depends on the import mode and
+the rootdir, so a test that imported state from one by package path could bind
+a second, empty copy and assert happily against nothing -- which is the exact
+failure this file exists to catch elsewhere.
 """
 
 from __future__ import annotations

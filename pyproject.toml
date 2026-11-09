@@ -44,14 +44,39 @@ dependencies = []
 # `tests/test_duckdb_single_process.py`.
 dev = ["pytest>=8", "psycopg[binary]>=3.2", "duckdb>=1.1"]
 
+# The suite ships inside the package, as `ration.conformance`, and it runs under
+# pytest; nothing else in `ration` does. So pytest is this extra and not a
+# dependency: `import ration` imports neither pytest nor `ration.conformance`,
+# and a deployment that installs `ration` to hold a lease never installs the
+# framework that judges a store.
+conformance = ["pytest>=8"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/ration"]
 
+# The sdist carries what a wheel is built from and what a reader of the package
+# is pointed at: the package, with the suite inside it, `pyproject.toml`, the
+# README the metadata names, the licence and the changelog. The rest of the tree
+# -- this repository's own tests, its CI and its governance -- is the checkout's,
+# not the distribution's.
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src/ration",
+    "/pyproject.toml",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+]
+
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-# The suite imports its own support modules by package path, so the repository
-# root has to be importable. Stated here rather than left to pytest's rootdir
-# inference, which depends on where the run was started from.
+# The suite first, from the package it ships in, then this repository's own
+# tests. The root `conftest.py` hands the suite this repository's cases before
+# either is collected.
+testpaths = ["src/ration/conformance", "tests"]
+# This repository's tests import `tests.cases` and `tests.support` by package
+# path, so the repository root has to be importable. Stated here rather than
+# left to pytest's rootdir inference, which depends on where the run was started
+# from.
 pythonpath = ["."]
 # `--strict-markers` is load-bearing, not tidiness. A conformance test declares
 # its property with a marker, and a typo in that marker would leave the test

@@ -21,8 +21,10 @@ normalising a header is not a shortcut anyone takes by accident.
 
 The frame here is a `role-claim` frame around a claim-only body, which is the
 use the form exists for. Every text is decoded against a ledger that has seen
-nothing, for the reason `tests/support/codecs.py` gives: the property is
+nothing, for the reason `src/ration/conformance/support/codecs.py` gives: the property is
 decided with the sequence held still.
+
+Measures: README.md, Frame property 6
 """
 
 from __future__ import annotations
@@ -41,7 +43,7 @@ from ration.frame import (
     FrameRefusal,
     Sequence,
 )
-from tests.support.codecs import CLAIM, CodecUnderTest
+from ration.conformance.support.codecs import CLAIM, CodecUnderTest
 
 #: The text form's alphabet in its value order, so a character's index is the
 #: six bits it stands for.
@@ -101,9 +103,12 @@ def test_only_the_canonical_text_is_read_as_a_frame(codec: CodecUnderTest) -> No
     # Whitespace inside the text, which the same decode skips.
     refused_as_text(healthy[:INSIDE] + " " + healthy[INSIDE:], "a space inside the text")
 
-    # A character outside ASCII altogether, in place of one inside the text.
+    # A character outside ASCII altogether, in place of one inside the text:
+    # U+FF21, a fullwidth A. Built by `chr` rather than written as a literal,
+    # because this module ships in `src/ration`, where every string literal is
+    # held to ASCII by `tests/test_ascii_only.py`; the input is the same either way.
     refused_as_text(
-        healthy[:INSIDE] + "\uff21" + healthy[INSIDE + 1 :], "a character outside ASCII"
+        healthy[:INSIDE] + chr(0xFF21) + healthy[INSIDE + 1 :], "a character outside ASCII"
     )
 
     # Padding. The form writes none, so a text that carries it was not

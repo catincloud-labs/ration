@@ -9,6 +9,8 @@ seen. More bytes than promised is the other observation, and it is a
 refusal rather than a tolerance because HTTP hands the reader one request's
 body: nothing past the frame is a second frame. Violated by `unchecked-length`
 and by `ignores-trailing`.
+
+Measures: README.md, Frame property 1
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from __future__ import annotations
 import pytest
 
 from ration.frame import TRAILING_BYTES, TRUNCATED, Frame, FrameRefusal, Sequence
-from tests.support.codecs import BODY, CodecUnderTest
+from ration.conformance.support.codecs import BODY, CodecUnderTest
 
 
 @pytest.mark.conformance("frame-length")

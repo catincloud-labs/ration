@@ -1,13 +1,19 @@
-"""Every implementation the suite runs against, and what each is expected to fail.
+"""How each store the suite runs against is built, and what each is expected to fail.
 
 The suite's job is not to validate a backend. It is to **discriminate between
-backends**, so the registry below is the suite's actual subject: in-memory
-stores that should pass everything, a set that should each fail a named
-property and pass the rest, and the backends that are not fakes at all.
+backends**, so the registry a run hands it is the suite's actual subject:
+in-memory stores that should pass everything, a set that should each fail a
+named property and pass the rest, and the backends that are not fakes at all.
+This module builds each kind of case. `MEMORY_CASES` below is the package's
+own share of a registry: the in-memory store, the correct store with an
+unusual answer, and the violators, each paired with the property it breaks.
+Which cases a run judges is its caller's registry; this repository's is
+`tests/cases.py` in the source tree.
 
-A new backend is added here and runs what is already written. It does not get
-tests of its own, and if it needs a special case to pass, that is a finding
-about the backend or the contract rather than a fixture to write.
+A new backend is added to a caller's registry and runs what is already
+written. It does not get tests of its own, and if it needs a special case to
+pass, that is a finding about the backend or the contract rather than a
+fixture to write.
 
 ## What a real backend demands of the harness
 
@@ -32,12 +38,16 @@ import tempfile
 import time
 import uuid
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from ration.contract import Store
 from ration.memory import MemoryStore
-from ration.postgres import PostgresStore
+
+if TYPE_CHECKING:
+    # An annotation only, so the suite imports no driver; see `postgres_case`.
+    from ration.postgres import PostgresStore
 
 try:
     from ration.duckdb_store import DuckDBStore
@@ -45,18 +55,17 @@ except ImportError:  # pragma: no cover - exercised by not having the driver
     DUCKDB_AVAILABLE = False
 else:
     DUCKDB_AVAILABLE = True
-from tests.permitted import PreviousVersionStore
-from tests.support.clock import FakeClock
-from tests.support.faults import FaultInjector
-from tests.support.gate import Gate
-from tests.violators import (
+from ration.conformance.permitted import PreviousVersionStore
+from ration.conformance.support.clock import FakeClock
+from ration.conformance.support.faults import FaultInjector
+from ration.conformance.support.gate import Gate
+from ration.conformance.violators import (
     ClientExpiryStore,
     ConflictWritesStore,
     CreateAlwaysStore,
     EchoesExpectedStore,
     FailOpenStore,
     GlobalCounterStore,
-    NaivePostgresStore,
     NaiveStore,
     RecyclingStore,
     StaleClockStore,
@@ -64,26 +73,14 @@ from tests.violators import (
 )
 
 __all__ = [
-    "CASES",
     "DUCKDB_AVAILABLE",
-    "POSTGRES_DSN",
-    "REQUIRE_POSTGRES",
+    "MEMORY_CASES",
+    "REAL_TTL",
     "BackendUnderTest",
     "Case",
+    "duckdb_case",
+    "postgres_case",
 ]
-
-
-#: Where the suite expects a Postgres to be. Unset means one is not available
-#: and the case is not registered.
-POSTGRES_DSN = os.environ.get("RATION_POSTGRES_DSN", "").strip()
-
-#: Set in CI, and the reason a missing backend cannot go quiet. Absence of a
-#: DSN is convenient locally and is a **hole** in a gate: a service container
-#: that failed to start, or an environment variable dropped from the workflow,
-#: leaves a green run in which the only real store was never exercised.
-#: `test_the_suite_discriminates.py` asserts the case is registered whenever
-#: this is set.
-REQUIRE_POSTGRES = bool(os.environ.get("RATION_REQUIRE_POSTGRES", "").strip())
 
 #: How long the suite is prepared to actually wait when it cannot fake time.
 #: Short enough that a full run stays quick; long enough to survive a round trip
@@ -121,9 +118,9 @@ class BackendUnderTest:
     #: is the result rather than a gap.
     skew_client_clock: Callable[[float], None]
     #: Makes the store unreachable, as close to genuinely as the backend allows.
-    partition: Callable[[], Iterator[None]]
+    partition: Callable[[], AbstractContextManager[None]]
     #: Makes the next write raise `Ambiguous`, having done what `applied` says.
-    ambiguity: Callable[..., Iterator[None]]
+    ambiguity: Callable[..., AbstractContextManager[None]]
     #: `None` where the store's atomic step is not in this process.
     _stepped: Callable[[Gate], BackendUnderTest] | None
     _prefix: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
@@ -172,10 +169,10 @@ def _memory_case(
         store_clock = FakeClock()
         client_clock = FakeClock()
         cls = _parking(store_class, gate) if gate is not None else store_class
-        kwargs: dict[str, object] = {"clock": store_clock}
+        kwargs: dict[str, Callable[[], float]] = {"clock": store_clock}
         if needs_client_clock:
             kwargs["client_clock"] = client_clock
-        faults = FaultInjector(cls(**kwargs))  # type: ignore[arg-type]
+        faults = FaultInjector(cls(**kwargs))
         store: Store = wrap(faults) if wrap is not None else faults
         return BackendUnderTest(
             case=case,
@@ -191,7 +188,7 @@ def _memory_case(
     return case
 
 
-def _duckdb_case(name: str, violates: set[str]) -> Case:
+def duckdb_case(name: str, violates: set[str]) -> Case:
     """A backend with no server, which is the whole of what makes it interesting."""
 
     def build(gate: Gate | None = None) -> BackendUnderTest:
@@ -245,10 +242,14 @@ def _duckdb_case(name: str, violates: set[str]) -> Case:
     return case
 
 
-def _postgres_case(
-    name: str, violates: set[str], store_class: type[PostgresStore]
+def postgres_case(
+    name: str, violates: set[str], store_class: type[PostgresStore], dsn: str
 ) -> Case:
-    """The backends that are not fakes, and therefore the ones testing this file."""
+    """The backends that are not fakes, and therefore the ones testing this file.
+
+    `dsn` names the server. Which server, and whether there is one, is the
+    caller's to say, so the case is built only where one is named.
+    """
 
     def build(gate: Gate | None = None) -> BackendUnderTest:
         # A store whose atomic step is a SQL statement has no seam to park in.
@@ -261,7 +262,7 @@ def _postgres_case(
         # store is pointed somewhere that refuses a connection, so what the
         # suite observes is Postgres failing and the backend translating it --
         # rather than a refusal the harness performed on the store's behalf.
-        address = {"dsn": POSTGRES_DSN}
+        address = {"dsn": dsn}
         store = store_class(lambda: address["dsn"])
         store.ensure_schema()
 
@@ -302,7 +303,10 @@ def _postgres_case(
     return case
 
 
-CASES: list[Case] = [
+#: The package's own cases: every in-memory store, correct or not. A caller's
+#: registry starts from these, so a run that judges any store also shows each
+#: violator below failing its property beside the correct store passing.
+MEMORY_CASES: tuple[Case, ...] = (
     _memory_case("correct", set(), MemoryStore),
     # Correct as well, and the only registered store whose conflict reports a
     # version the key held before its current one even when nothing races it
@@ -329,21 +333,4 @@ CASES: list[Case] = [
     # where failing open is actually written.
     _memory_case("fail-open", {"unreachable-refuses"}, MemoryStore, wrap=FailOpenStore),
     _memory_case("token-dropping", {"ambiguity-resolvable"}, TokenDroppingStore),
-]
-
-if DUCKDB_AVAILABLE:
-    # Registered unconditionally where Postgres needs a DSN, and that
-    # asymmetry is the first thing this backend demonstrates: there is no
-    # server to name, because the store is a file this process opens. It is
-    # also, exactly, why it cannot be a coordination store shared between
-    # processes -- `tests/test_duckdb_single_process.py` asserts the consequence.
-    CASES.append(_duckdb_case("duckdb", set()))
-
-if POSTGRES_DSN:
-    CASES.append(_postgres_case("postgres", set(), PostgresStore))
-    # The violator that matters most. Without it the suite would only ever
-    # reject fakes this repository wrote, and a contract that cannot
-    # discriminate between *real* candidates has bought nothing.
-    CASES.append(
-        _postgres_case("postgres-naive", {"atomicity"}, NaivePostgresStore)
-    )
+)

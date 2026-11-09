@@ -19,7 +19,8 @@ import pytest
 
 from ration.addressing import Address, announce, key_for, resolve
 from ration.lease import release
-from tests.support.backends import CASES, REAL_TTL, BackendUnderTest
+from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
+from tests.cases import CASES
 
 CORRECT_CASES = [case for case in CASES if not case.violates]
 

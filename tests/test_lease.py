@@ -5,8 +5,8 @@ fixture. Conformance decides whether a store implements the contract; this file
 decides whether a lease built on the contract behaves, and running it against
 implementations that are wrong on purpose would only re-report findings the
 suite already owns. What it runs against is every case declaring no violations,
-filtered from the registry in `tests/support/backends.py` rather than listed
-here, so `postgres` is among them whenever a server is configured.
+filtered from the registry in `tests/cases.py` rather than listed here, so
+`postgres` is among them whenever a server is configured.
 
 **One negative control does live here**, at the bottom: the racing-acquire
 check is re-run against `naive`, which must double-grant. A concurrency check
@@ -22,10 +22,11 @@ import pytest
 
 from ration.contract import Store, Unreachable
 from ration.lease import Lease, acquire, release, renew
-from tests.support.backends import CASES, REAL_TTL, BackendUnderTest
-from tests.support.gate import Gate
-from tests.support.preemption import preemptive
-from tests.violators import NaiveStore
+from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
+from ration.conformance.support.gate import Gate
+from ration.conformance.support.preemption import preemptive
+from ration.conformance.violators import NaiveStore
+from tests.cases import CASES
 
 #: Every implementation expected to be correct. Filtered rather than listed, so
 #: a store added to the registry is exercised here without this file changing.

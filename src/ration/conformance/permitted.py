@@ -1,6 +1,6 @@
 """Stores that are correct on purpose, in a way no other registered store is.
 
-`tests/violators.py` holds the known-negatives: each store there is wrong about
+`src/ration/conformance/violators.py` holds the known-negatives: each store there is wrong about
 one property and must fail it. This module holds a known-positive of a narrower
 kind. Each store here uses latitude the contract grants and the other correct
 stores happen not to use, so a test that quietly stopped granting it would turn

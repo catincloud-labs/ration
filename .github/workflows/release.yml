@@ -6,8 +6,8 @@ name: release
 # the tag's SSH signature has been verified against `.github/allowed_signers`,
 # the tag's name has been read as `v` and the version `pyproject.toml` carries
 # at the tagged commit, and the suite has passed there. Nothing is built or
-# pushed to a registry: the wheel would carry `src/ration` and not the suite
-# that judges it (README, "Versions and releases"). A merge cannot release.
+# pushed to a registry, and a release carries no files of its own (README,
+# "Versions and releases"). A merge cannot release.
 #
 # TO CUT A RELEASE, from a clone whose `gpg.format` is `ssh` and whose
 # `user.signingkey` is the key `.github/allowed_signers` names, at a commit

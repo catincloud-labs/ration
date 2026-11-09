@@ -1,7 +1,7 @@
 """A worker that contends for one key from its own interpreter.
 
 **The point of this module is that it is a module.** The threaded hammer in
-`tests/conformance/test_atomicity.py` closes over a store instance; a process
+`src/ration/conformance/test_atomicity.py` closes over a store instance; a process
 cannot. Everything a worker needs has to survive being pickled and re-imported
 under `spawn`, which is what forces each worker to build its **own** store from
 nothing but a DSN -- and that, rather than the thread count, is the property
@@ -18,7 +18,7 @@ from typing import Callable
 
 from ration.contract import Applied, Record, Store
 from ration.postgres import PostgresStore
-from tests.violators import NaivePostgresStore
+from ration.conformance.postgres_violators import NaivePostgresStore
 
 __all__ = [
     "STORES",
@@ -33,7 +33,7 @@ __all__ = [
 
 #: Named rather than passed, because a class is not reliably picklable across a
 #: `spawn` boundary on every platform and a string is. The names match the
-#: registry in `tests/support/backends.py` on purpose: a reader comparing this
+#: registry in `tests/cases.py` on purpose: a reader comparing this
 #: probe's verdict against the threaded hammer's should not have to translate.
 STORES: dict[str, Callable[[str], Store]] = {
     "postgres": PostgresStore,
