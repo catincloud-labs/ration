@@ -26,6 +26,20 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   verified the tag's signature and passed the suite at `a386571`. The sentence
   now directs a reader to the releases and to a clone at a release's tag.
 
+### The first piece of work, and why it is not the service
+
+- **`The contract requires a conflict to be reported *without writing*, which
+  holds, and says nothing about the version it carries.`** The second
+  sentence of the paragraph headed "Not a contract defect", in this wording
+  from `9ada7a1` (2026-10-29T00:51:42Z), the commit that published the tree.
+  Read dead 2026-11-09 against `tests/conformance/test_compare_and_set.py` as
+  this entry's commit leaves it: the test requires a conflict's version to be
+  one the key has held, as `Conflict` in `src/ration/contract.py` states it.
+  Before that commit the test required the key's current version, so the
+  sentence understated what the suite decided either way. The sentence now
+  says the contract asks only that the key has held the version, and names
+  the test that decides it.
+
 ## AGENTS.md
 
 ### Merging, the cold review and the record

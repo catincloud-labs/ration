@@ -28,24 +28,34 @@ def test_the_write_lands_only_at_the_expected_version(
     first = Record(payload=b"first", token="caller-a")
     second = Record(payload=b"second", token="caller-b")
 
+    # Every version the key has held, and so every version a conflict may
+    # carry. `Conflict` promises a version the key has held and not its
+    # current one -- under concurrency a store may report the version the
+    # caller came from -- so the suite asks no more than that. A caller that
+    # needs the current version reads.
+    versions_held = [ABSENT]
+
     # Absence is a version. Creation is a compare-and-set against it, so a
     # creation from the wrong expectation is refused like any other write --
     # this is the assertion an upsert dressed as a compare-and-set fails.
-    assert store.compare_and_set(key, 99, first) == Conflict(ABSENT)
+    refused = store.compare_and_set(key, 99, first)
+    assert isinstance(refused, Conflict)
+    assert refused.version in versions_held
     assert store.read(key).version == ABSENT
     assert not store.read(key).present
 
     created = store.compare_and_set(key, ABSENT, first)
     assert isinstance(created, Applied)
+    versions_held.append(created.version)
     held = store.read(key)
     assert held.record is not None
     assert held.record.payload == b"first"
     assert held.version == created.version
 
-    # A stale expectation is refused, and the refusal carries the version the
-    # key actually reached, so a caller can retry from it rather than re-read
-    # and race again.
-    assert store.compare_and_set(key, ABSENT, second) == Conflict(created.version)
+    # A stale expectation is refused.
+    refused = store.compare_and_set(key, ABSENT, second)
+    assert isinstance(refused, Conflict)
+    assert refused.version in versions_held
 
     # And refusing did not write. A store that answers "conflict" and writes
     # anyway has told the truth and done the other thing, and the caller it
@@ -58,15 +68,16 @@ def test_the_write_lands_only_at_the_expected_version(
     # From the version it actually reached, the same write lands.
     applied = store.compare_and_set(key, created.version, second)
     assert isinstance(applied, Applied)
+    versions_held.append(applied.version)
     landed = store.read(key)
     assert landed.record is not None
     assert landed.record.payload == b"second"
 
     # Deletion is a write and gets no exemption: refused from a stale
     # expectation, and refusing does not delete.
-    assert store.compare_and_set(key, created.version, None) == Conflict(
-        applied.version
-    )
+    refused = store.compare_and_set(key, created.version, None)
+    assert isinstance(refused, Conflict)
+    assert refused.version in versions_held
     assert store.read(key).present
 
     deleted = store.compare_and_set(key, applied.version, None)

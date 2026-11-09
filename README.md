@@ -406,8 +406,9 @@ statement that decides the outcome and the statement that reports the version
 share one snapshot, and only the `UPDATE` half gets `EvalPlanQual`.
 
 **Not a contract defect.** The contract requires a conflict to be reported
-*without writing*, which holds, and says nothing about the version it carries.
-Making it exact costs either a second round trip or an
+*without writing*, which holds, and asks of the version it carries only that
+the key has held it, which holds too; `tests/conformance/test_compare_and_set.py`
+decides both, and accepts any version the key has held. Making it exact costs either a second round trip or an
 `ON CONFLICT DO UPDATE` that **writes in order to read**, which is precisely
 what `conflict-writes` exists to fail. So the claims were corrected and the
 behaviour pinned by `tests/test_postgres_conflict_version.py`,

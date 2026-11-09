@@ -2,7 +2,9 @@
 
 Not a conformance test, and deliberately not: it declares no contract property,
 because the contract requires a conflict to be *reported without writing* and
-says nothing about the version it carries. Adding a property here would add a
+asks of the version it carries only that the key has held it, which
+`tests/conformance/test_compare_and_set.py` decides. Which held version a
+loser is handed is not asked, and adding a property here would add a
 guarantee before a consumer needs one, and would narrow the field of backends
 for a number nobody reads.
 
