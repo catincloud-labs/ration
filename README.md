@@ -712,7 +712,10 @@ failure about a store that had been back the whole time.
 
 ## Installing
 
-The distribution is `catincloud-ration`, and it imports as `ration`:
+The distribution is `catincloud-ration`, and it imports as `ration`. No
+release is on PyPI yet. The first that `.github/workflows/publish.yml` uploads
+is `v0.2.1`; until then, install from a clone at a release's tag, as under
+*Versions and releases*. From that upload on:
 
 ```sh
 pip install catincloud-ration
@@ -728,14 +731,14 @@ belongs to an unrelated window manager for Python 2.6, last released as `0.1.3`
 in 2010. Its `setup.py` installs a top-level `ration` package of its own, so the
 two cannot share an environment.
 
-A release from `v0.2.1` on is uploaded to PyPI by
-`.github/workflows/publish.yml`, from the signed tag, once the checks under
+`publish.yml` uploads a release from its signed tag only once the checks under
 *Versions and releases* have passed and the stranger-shaped projects in
-`.github/strangers/` have judged the wheel it uploads. Each file carries a PEP
-740 attestation, and the same run reads it back from the index and refuses one
-that names any publisher but that workflow, in this repository, in its `pypi`
-environment. `v0.1.0` and `v0.2.0` are GitHub releases only: install one from a
-clone at its tag, as below, and its tree names the distribution `ration`.
+`.github/strangers/` have judged the wheel it uploads. Each file it uploads
+carries a PEP 740 attestation. After the upload, the same run reads each file's
+provenance back from the index. A provenance that names any publisher but that
+workflow, in this repository, in its `pypi` environment, turns the run red, and
+the run then creates no GitHub release. `v0.1.0` and `v0.2.0` are GitHub
+releases only, and their trees name the distribution `ration`.
 
 ## Versions and releases
 
@@ -794,8 +797,8 @@ does not carry it and its release run did not compare its version; from a
 clone at `main`, `bash .github/release/check-version.sh v0.1.0` admits it.
 
 **Do not install by the bare name.** `ration` on PyPI is an unrelated project.
-A release of this package from `v0.2.1` on is published to PyPI as
-`catincloud-ration` (*Installing*, above). Its wheel carries the suite that
+No release of this package is on PyPI yet; the first to be uploaded, as
+`catincloud-ration`, is `v0.2.1` (*Installing*, above). Its wheel carries the suite that
 judges a store, as `ration.conformance`, and the suite's one dependency, pytest,
 is the `conformance` extra rather than a dependency of the package. The one
 module of the suite that needs more is `ration.conformance.postgres_violators`,
@@ -850,7 +853,7 @@ directory holding the clone:
 pip install "./ration[conformance]"
 ```
 
-From `v0.2.1` on, the same package and extra install from PyPI, with
+Once `v0.2.1` is uploaded, the same package and extra install from PyPI, with
 `pip install "catincloud-ration[conformance]"`.
 
 A tag whose tree has `src/ration/conformance/plugin.py` has the plugin;

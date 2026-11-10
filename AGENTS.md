@@ -230,15 +230,16 @@ everywhere or nowhere. Nothing checks it.
   copy rules into it: two copies of a rule is one rule and one stale claim.
 - **Every CI check runs from this tree.** `.github/workflows/checks.yml`,
   `pr-hygiene.yml`, `release.yml` and `publish.yml` are local jobs. The guards
-  the first two run live under `scripts/`; the release tag verifier and version
-  check are `.github/release/verify-tag.sh` and `.github/release/check-version.sh`,
-  written here and copied from nowhere. So are the stranger-shaped projects
-  and their runner under `.github/strangers/`, which the `installed wheel`
-  job runs against the wheel built at the head. `publish.yml`'s `build` job
-  runs the same runner against the wheel it hands to an upload, and the
-  provenance check, its refusal arms and the read-back after an upload are
-  `.github/release/check-provenance.py`, `provenance-arms.py` and
-  `read-back.sh`, written here too.
+  the first two run live under `scripts/`; the release tag verifier and
+  version check are `.github/release/verify-tag.sh` and
+  `.github/release/check-version.sh`, written here and copied from nowhere. So
+  are the stranger-shaped projects and their runner under
+  `.github/strangers/`, which the `installed wheel` job runs against the wheel
+  built at the head. `publish.yml`'s `build` job runs the same runner against
+  the wheel it hands to an upload. The provenance check and its refusal arms,
+  and the read-back after an upload and its refusal arms, are
+  `.github/release/check-provenance.py`, `provenance-arms.py`, `read-back.sh`
+  and `read-back-arms.sh`, written here too.
   - The guards under `scripts/` (and `.github/markdownlint.json`) are
     **byte-identical copies** of checkers maintained in a private repository,
     which a public repository's workflow cannot call. They are compared

@@ -87,9 +87,12 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   `.github/workflows/publish.yml`, which calls `.github/workflows/release.yml`
   for the tag checks and the suite, uploads the distribution to PyPI as
   `catincloud-ration` from `v0.2.1` on, and then creates the GitHub release;
-  `release.yml` no longer starts on a tag (#24). The sentence now says a
-  release from `v0.2.1` on is published to PyPI as `catincloud-ration`, and
-  points to the new *Installing* section.
+  `release.yml` no longer starts on a tag (#24). The sentence was true of
+  every release when written. Against this tree, it denies a release path the
+  tree now has, and it would be false of the first release that path uploads.
+  The sentence now says no release is on PyPI yet and that `v0.2.1` is the
+  first to be uploaded, as `catincloud-ration`, and points to the new
+  *Installing* section; that sentence dies when `v0.2.1` is uploaded.
 
 ### Paths to the suite
 
@@ -205,6 +208,24 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   `release.yml` no longer starts on a tag (#24). The header now says this file
   builds nothing and pushes nothing to a registry, and that the GitHub release
   carries no files of its own.
+
+## .github/allowed_signers
+
+### The header
+
+- **".github/workflows/release.yml verifies every pushed v* tag against this
+  file, through .github/release/verify-tag.sh, and creates no release for a
+  tag it cannot verify."** The header's second paragraph's first sentence,
+  from `6b96854` (2026-11-01T00:58:19Z). Read dead 2026-11-10 against the tree
+  this entry's commit leaves, where a signed `v*` tag starts
+  `.github/workflows/publish.yml`, which calls `.github/workflows/release.yml`
+  for the tag checks and the suite, uploads the distribution to PyPI as
+  `catincloud-ration` from `v0.2.1` on, and then creates the GitHub release;
+  `release.yml` no longer starts on a tag (#24). The sentence now says
+  `publish.yml` has each tag verified by `release.yml` and uploads nothing and
+  creates no release for a tag that is not verified, and the next sentence
+  names `release.yml` rather than "The same workflow"; found by the cold
+  review of this entry's pull request.
 
 ## docs/design/coordination-substrate.md
 
