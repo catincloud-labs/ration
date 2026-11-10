@@ -17,7 +17,8 @@
 #
 # By the time this runs the version is on the index and nothing here can take
 # it off, so a red exit is the report that it did not read back as expected.
-# The integrity and JSON APIs can lag an upload, so each read is retried a
+# read-back-arms.sh shows this refusing, in the `identity` job, on every pull
+# request. The integrity and JSON APIs can lag an upload, so each read is retried a
 # bounded number of times; after that an absence is real.
 #
 #   0   every file's provenance names the expected publisher, and the index

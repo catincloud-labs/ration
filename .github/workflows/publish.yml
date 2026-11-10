@@ -24,7 +24,8 @@ name: publish
 #            `pyproject.toml` carries at the tagged commit, both shown refusing
 #            tags built wrong, and the suite at the tag on a real Postgres.
 #   identity the provenance check below, shown refusing another publisher's
-#            provenance and admitting the same shape naming this one.
+#            provenance and admitting the same shape naming this one, and the
+#            read-back the upload jobs run, shown refusing the same way.
 #   build    the sdist, and the wheel built from it, read back and judged by
 #            the stranger arms in `.github/strangers/arms.py`.
 #   publish  needs all three, waits on the `pypi` environment's reviewer,
@@ -57,6 +58,11 @@ name: publish
 #     attestation. It does not verify the attestations' signatures itself.
 #   - A green rehearsal is evidence about the TestPyPI publisher alone. PyPI's
 #     is a separate registration, and nothing here reads it before the tag.
+#   - A red read-back after a green upload withholds the GitHub release.
+#     Re-running `publish` uploads the same files again, and whether the index
+#     answers a byte-identical re-upload as success is not read here. The
+#     remedy that needs no re-upload is `gh release create <tag> --verify-tag`
+#     by hand, once the files on the index have been read.
 #   - Everything `gate` says it does not prove (`release.yml`'s header).
 
 on:
@@ -68,8 +74,10 @@ on:
 permissions:
   contents: read
 
-# One run at a time per ref, and none cancelled: a run cancelled between the
-# upload and its read-back would leave a spent version unread.
+# One run at a time per ref, and a run in progress is never cancelled: a run
+# cancelled between the upload and its read-back would leave a spent version
+# unread. A run still pending when a newer one joins the group is cancelled by
+# GitHub, before it has uploaded anything.
 concurrency:
   group: publish-${{ github.ref }}
   cancel-in-progress: false
@@ -92,8 +100,9 @@ jobs:
   # The check every upload job runs on what the index stored, run first on
   # provenances that must be refused. The foreign one is a real provenance
   # pypi.org stored for a file another publisher uploaded, `dagster-dex`'s
-  # 1.1.0 wheel; every other arm is derived from it, so each has the shape an
-  # index answers. Run for both environments, because both upload jobs trust it.
+  # 1.1.0 wheel; every arm that writes a provenance is derived from it, so each
+  # has the shape an index answers. Run for both environments, because both
+  # upload jobs trust it.
   identity:
     name: the identity check refuses
     runs-on: ubuntu-latest
@@ -125,6 +134,13 @@ jobs:
           --repository "$PUBLISHER_REPOSITORY" --workflow "$PUBLISHER_WORKFLOW"
           --environment testpypi --work "$RUNNER_TEMP/arms-testpypi"
 
+      # The read-back the upload jobs run after an upload, where a defect would
+      # first show with a version already spent, run here against another
+      # publisher's real files: refused for its publisher, refused for one
+      # altered digest, then admitted under its own publisher.
+      - name: "Refused: the read-back of another publisher's files"
+        run: bash .github/release/read-back-arms.sh
+
   # The files an upload job uploads, and the only place they are made. `python
   # -m build` makes the sdist and then the wheel FROM that sdist, so the wheel
   # judged here is one the sdist reproduces. The upload jobs compare what they
@@ -144,8 +160,9 @@ jobs:
         with:
           python-version: '3.13'
 
-      # A rehearsal uploads a version no release will carry, so it can be run
-      # again. The base is read, not written here, and a stamp that matched
+      # A rehearsal uploads a version no release will carry, so it can be
+      # dispatched again. A re-run of the same run keeps its run number, and so
+      # its version, which the index already holds. The base is read, not written here, and a stamp that matched
       # nothing stops the job rather than rehearsing the real number.
       - name: A development version, for a rehearsal only
         if: github.event_name == 'workflow_dispatch'

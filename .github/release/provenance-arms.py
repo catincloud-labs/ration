@@ -12,12 +12,16 @@ jobs expect.
 
 Each arm is a provenance written into `--work`, handed to
 `check-provenance.py` exactly as the upload jobs call it, and decided by its
-exit code. The foreign provenance is refused as fetched. Every other arm is
-derived from it, so each has the shape an index really answers: the admitted
-arm is the foreign one with its publisher rewritten to the expected one, and
-each refusing arm differs from the admitted one in exactly one way. The
-admitted arm is what shows the refusals are refusals of a publisher, not of a
-shape the checker cannot read.
+exit code. The foreign provenance is refused as fetched. Every arm that
+writes a provenance derives it from the foreign one, so each has the shape an
+index really answers. The admitted arm is the foreign one with its publisher
+rewritten to the expected one, and it is what shows the refusals are refusals
+of a publisher, not of a shape the checker cannot read. Most refusing arms
+change one field of the admitted publisher; two put another publisher's bundle
+beside the expected one, in each order, so a checker that reads one bundle is
+refused whichever it reads; two remove what an index might answer with (the
+bundles, an attestation); two hand over no provenance at all; and one omits
+`--environment` alone, so a checker that defaults it is refused.
 
 Before any arm, a positive control: the foreign provenance holds at least one
 bundle, each with at least one attestation, and names another repository, so
@@ -98,21 +102,39 @@ def arms(foreign: Document, expected: dict[str, str]) -> tuple[Arm, ...]:
     foreign_repository = str(publisher_of(bundles(foreign)[0]).get("repository"))
     mixed = copy.deepcopy(admitted)
     mixed["attestation_bundles"] = [*bundles(mixed), *copy.deepcopy(bundles(foreign))]
+    reversed_mixed = copy.deepcopy(admitted)
+    reversed_mixed["attestation_bundles"] = [*copy.deepcopy(bundles(foreign)), *bundles(reversed_mixed)]
     no_attestation = copy.deepcopy(admitted)
     bundles(no_attestation)[0]["attestations"] = []
     return (
         Arm("another publisher's provenance, as the index stored it", 5, dump(foreign)),
         Arm("another repository", 5, dump(changed(admitted, "repository", foreign_repository))),
+        Arm(
+            "a repository the expected one is a prefix of", 5,
+            dump(changed(admitted, "repository", expected["repository"] + "-fork")),
+        ),
+        Arm(
+            "the expected repository in another case", 5,
+            dump(changed(admitted, "repository", expected["repository"].upper())),
+        ),
         Arm("another workflow", 5, dump(changed(admitted, "workflow", "release.yml"))),
         Arm("another environment", 5, dump(changed(admitted, "environment", other_environment))),
+        Arm(
+            "an environment the expected one is a prefix of", 5,
+            dump(changed(admitted, "environment", expected["environment"] + "-staging")),
+        ),
         Arm("no environment", 5, dump(changed(admitted, "environment", None))),
         Arm("another kind of publisher", 5, dump(changed(admitted, "kind", "GitLab"))),
-        Arm("the expected bundle beside another publisher's", 5, dump(mixed)),
+        Arm("the expected bundle, then another publisher's", 5, dump(mixed)),
+        Arm("another publisher's bundle, then the expected one", 5, dump(reversed_mixed)),
         Arm("no bundle", 4, dump({**admitted, "attestation_bundles": []})),
         Arm("a bundle with no attestation", 4, dump(no_attestation)),
         Arm("not JSON", 3, lambda path: path.write_text("<html>not found</html>", encoding="utf-8")),
         Arm("no file", 3, lambda path: None),
-        Arm("no environment given", 64, dump(admitted), ("--repository", expected["repository"])),
+        Arm(
+            "no --environment given", 64, dump(admitted),
+            (f"--repository={expected['repository']}", f"--workflow={expected['workflow']}"),
+        ),
         # Last, so it is read only after every refusal above has been seen.
         Arm("the same provenance, naming the expected publisher", 0, dump(admitted)),
     )
