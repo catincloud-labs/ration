@@ -94,6 +94,33 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   first to be uploaded, as `catincloud-ration`, and points to the new
   *Installing* section; that sentence dies when `v0.2.1` is uploaded.
 
+### Installing, and the first upload's own page
+
+Each of the three sentences below was true when it was moved, and each would
+have been false on PyPI from the moment it was published. Whatever README the
+`v0.2.1` tag carries becomes the description PyPI shows for `0.2.1`, and an
+uploaded version's description is never replaced. So they were rewritten on
+2026-11-10, before that tag, to state the release path, which is true before the
+upload and after it. Each is read against the tree this entry's commit leaves.
+
+- **"No release is on PyPI yet. The first that
+  `.github/workflows/publish.yml` uploads is `v0.2.1`; until then, install from
+  a clone at a release's tag, as under *Versions and releases*. From that upload
+  on:"** The second to fourth sentences of *Installing*, from `239f95a`
+  (2026-11-10T00:41:31Z). They now say `publish.yml` uploads each release to
+  PyPI from `v0.2.1` on, and that an earlier release installs from a clone at
+  its tag.
+- **"No release of this package is on PyPI yet; the first to be uploaded, as
+  `catincloud-ration`, is `v0.2.1` (*Installing*, above)."** The second
+  sentence of the paragraph headed "Do not install by the bare name", from
+  `239f95a` (2026-11-10T00:41:31Z). It now says this package's releases are on
+  PyPI as `catincloud-ration` from `v0.2.1` on.
+- **"Once `v0.2.1` is uploaded, the same package and extra install from PyPI,
+  with `pip install "catincloud-ration[conformance]"`."** The sentence under
+  *Running the suite against your own store* that follows the install from a
+  clone, from `239f95a` (2026-11-10T00:41:31Z). It now begins "From `v0.2.1`
+  on".
+
 ### Paths to the suite
 
 - **Every `tests/conformance/`, `tests/support/backends.py`,

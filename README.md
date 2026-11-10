@@ -712,10 +712,10 @@ failure about a store that had been back the whole time.
 
 ## Installing
 
-The distribution is `catincloud-ration`, and it imports as `ration`. No
-release is on PyPI yet. The first that `.github/workflows/publish.yml` uploads
-is `v0.2.1`; until then, install from a clone at a release's tag, as under
-*Versions and releases*. From that upload on:
+The distribution is `catincloud-ration`, and it imports as `ration`.
+`.github/workflows/publish.yml` uploads each release to PyPI from `v0.2.1` on.
+An earlier release installs from a clone at its tag, as under *Versions and
+releases*. From PyPI:
 
 ```sh
 pip install catincloud-ration
@@ -797,8 +797,8 @@ does not carry it and its release run did not compare its version; from a
 clone at `main`, `bash .github/release/check-version.sh v0.1.0` admits it.
 
 **Do not install by the bare name.** `ration` on PyPI is an unrelated project.
-No release of this package is on PyPI yet; the first to be uploaded, as
-`catincloud-ration`, is `v0.2.1` (*Installing*, above). Its wheel carries the suite that
+This package's releases are on PyPI as `catincloud-ration` from `v0.2.1` on
+(*Installing*, above). Its wheel carries the suite that
 judges a store, as `ration.conformance`, and the suite's one dependency, pytest,
 is the `conformance` extra rather than a dependency of the package. The one
 module of the suite that needs more is `ration.conformance.postgres_violators`,
@@ -853,7 +853,7 @@ directory holding the clone:
 pip install "./ration[conformance]"
 ```
 
-Once `v0.2.1` is uploaded, the same package and extra install from PyPI, with
+From `v0.2.1` on, the same package and extra install from PyPI, with
 `pip install "catincloud-ration[conformance]"`.
 
 A tag whose tree has `src/ration/conformance/plugin.py` has the plugin;
