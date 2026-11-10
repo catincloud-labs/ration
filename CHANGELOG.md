@@ -55,6 +55,45 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   says the wheel carries the suite as `ration.conformance`, with pytest as its
   `conformance` extra.
 
+### Versions and releases, once a release is uploaded
+
+- **`A release carries no files of its own.`** The first sentence of the
+  section's third paragraph, from `58aa81c` (2026-11-01T01:46:40Z). Read dead
+  2026-11-10 against the tree this entry's commit leaves, where a signed `v*`
+  tag starts `.github/workflows/publish.yml`, which calls
+  `.github/workflows/release.yml` for the tag checks and the suite, uploads
+  the distribution to PyPI as `catincloud-ration` from `v0.2.1` on, and then
+  creates the GitHub release; `release.yml` no longer starts on a tag (#24). A
+  release from `v0.2.1` on has files on PyPI, so the sentence now says a
+  GitHub release carries no files of its own.
+- **"A release is a signed `v*` tag and the GitHub release
+  `.github/workflows/release.yml` creates from it, after verifying the tag's
+  SSH signature against `.github/allowed_signers`, reading the tag's name as
+  exactly `v` and the version `pyproject.toml` carries at the tagged commit,
+  and running the suite there."** The same paragraph's third sentence, in this
+  wording from `c61460e` (2026-11-01T01:47:23Z); its first clause stood there
+  from `58aa81c` (2026-11-01T01:46:40Z). Read dead 2026-11-10 against the tree
+  this entry's commit leaves, where a signed `v*` tag starts
+  `.github/workflows/publish.yml`, which calls `.github/workflows/release.yml`
+  for the tag checks and the suite, uploads the distribution to PyPI as
+  `catincloud-ration` from `v0.2.1` on, and then creates the GitHub release;
+  `release.yml` no longer starts on a tag (#24). The sentence now says
+  `publish.yml` makes the upload and the GitHub release, after `release.yml`,
+  which it calls, has run the same checks.
+- **`This package is not published to a registry.`** The second sentence of
+  the paragraph headed "Do not install by the bare name", in this wording from
+  `f99e485` (2026-11-09T20:52:08Z). Read dead 2026-11-10 against the tree this
+  entry's commit leaves, where a signed `v*` tag starts
+  `.github/workflows/publish.yml`, which calls `.github/workflows/release.yml`
+  for the tag checks and the suite, uploads the distribution to PyPI as
+  `catincloud-ration` from `v0.2.1` on, and then creates the GitHub release;
+  `release.yml` no longer starts on a tag (#24). The sentence was true of
+  every release when written. Against this tree, it denies a release path the
+  tree now has, and it would be false of the first release that path uploads.
+  The sentence now says no release is on PyPI yet and that `v0.2.1` is the
+  first to be uploaded, as `catincloud-ration`, and points to the new
+  *Installing* section; that sentence dies when `v0.2.1` is uploaded.
+
 ### Paths to the suite
 
 - **Every `tests/conformance/`, `tests/support/backends.py`,
@@ -98,6 +137,16 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   registry of stores is `tests/cases.py` (#20). The sentence now names the
   suite the package ships, `src/ration/conformance/`.
 
+### Every CI check runs from this tree
+
+- **"`.github/workflows/checks.yml`, `pr-hygiene.yml` and `release.yml` are
+  local jobs."** The second sentence of the bullet headed "Every CI check runs
+  from this tree", under *Repo conventions*, in this wording from `3808200`
+  (2026-11-01T01:17:06Z). Read dead 2026-11-10 against the tree this entry's
+  commit leaves, where `.github/workflows/publish.yml` runs on every pull
+  request and on a signed `v*` tag, from this tree like the other three (#24).
+  The sentence now names all four.
+
 ### Deliberately absent
 
 - **"A backend is added to `CASES` in `tests/support/backends.py` and runs
@@ -125,6 +174,58 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
   a registry and that a release carries no files of its own, which the
   README's *Versions and releases* states, and gives no reason about the
   wheel.
+- **`The release path for this repository, and the only one.`** The header's
+  first sentence, from `6b96854` (2026-11-01T00:58:19Z). Read dead 2026-11-10
+  against the tree this entry's commit leaves, where a signed `v*` tag starts
+  `.github/workflows/publish.yml`, which calls `.github/workflows/release.yml`
+  for the tag checks and the suite, uploads the distribution to PyPI as
+  `catincloud-ration` from `v0.2.1` on, and then creates the GitHub release;
+  `release.yml` no longer starts on a tag (#24). The sentence is now
+  `publish.yml`'s, and this header says the file holds the checks that gate a
+  release.
+- **"A release here is a GitHub release on a signed `v*` tag, created only
+  after the tag's SSH signature has been verified against
+  `.github/allowed_signers`, the tag's name has been read as `v` and the
+  version `pyproject.toml` carries at the tagged commit, and the suite has
+  passed there."** The header's second sentence, in this wording from
+  `c61460e` (2026-11-01T01:47:23Z); its first clause stood there from
+  `6b96854` (2026-11-01T00:58:19Z). Read dead 2026-11-10 against the tree this
+  entry's commit leaves, where a signed `v*` tag starts
+  `.github/workflows/publish.yml`, which calls `.github/workflows/release.yml`
+  for the tag checks and the suite, uploads the distribution to PyPI as
+  `catincloud-ration` from `v0.2.1` on, and then creates the GitHub release;
+  `release.yml` no longer starts on a tag (#24). The header now names the same
+  checks as this file's, and says `publish.yml` calls it as its `gate` job and
+  uploads and creates the GitHub release only after they pass.
+- **"Nothing is built or pushed to a registry, and a release carries no files
+  of its own (README, "Versions and releases")."** The header's third
+  sentence, in this wording from `f99e485` (2026-11-09T20:52:08Z), which
+  replaced the one in the entry above. Read dead 2026-11-10 against the tree
+  this entry's commit leaves, where a signed `v*` tag starts
+  `.github/workflows/publish.yml`, which calls `.github/workflows/release.yml`
+  for the tag checks and the suite, uploads the distribution to PyPI as
+  `catincloud-ration` from `v0.2.1` on, and then creates the GitHub release;
+  `release.yml` no longer starts on a tag (#24). The header now says this file
+  builds nothing and pushes nothing to a registry, and that the GitHub release
+  carries no files of its own.
+
+## .github/allowed_signers
+
+### The header
+
+- **".github/workflows/release.yml verifies every pushed v* tag against this
+  file, through .github/release/verify-tag.sh, and creates no release for a
+  tag it cannot verify."** The header's second paragraph's first sentence,
+  from `6b96854` (2026-11-01T00:58:19Z). Read dead 2026-11-10 against the tree
+  this entry's commit leaves, where a signed `v*` tag starts
+  `.github/workflows/publish.yml`, which calls `.github/workflows/release.yml`
+  for the tag checks and the suite, uploads the distribution to PyPI as
+  `catincloud-ration` from `v0.2.1` on, and then creates the GitHub release;
+  `release.yml` no longer starts on a tag (#24). The sentence now says
+  `publish.yml` has each tag verified by `release.yml` and uploads nothing and
+  creates no release for a tag that is not verified, and the next sentence
+  names `release.yml` rather than "The same workflow"; found by the cold
+  review of this entry's pull request.
 
 ## docs/design/coordination-substrate.md
 
