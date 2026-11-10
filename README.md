@@ -710,6 +710,33 @@ failure about a store that had been back the whole time.
   which connections it opened itself, and one that gives a write the read's
   courtesy. A test that stops rejecting is a failure on the next run.
 
+## Installing
+
+The distribution is `catincloud-ration`, and it imports as `ration`:
+
+```sh
+pip install catincloud-ration
+pip install "catincloud-ration[conformance]"
+```
+
+The first installs the services and stores alone. The second adds pytest, the
+one dependency of the suite the package ships as `ration.conformance` (*Running
+the suite against your own store*, below).
+
+**`pip install ration` installs a different project.** The bare name on PyPI
+belongs to an unrelated window manager for Python 2.6, last released as `0.1.3`
+in 2010. Its `setup.py` installs a top-level `ration` package of its own, so the
+two cannot share an environment.
+
+A release from `v0.2.1` on is uploaded to PyPI by
+`.github/workflows/publish.yml`, from the signed tag, once the checks under
+*Versions and releases* have passed and the stranger-shaped projects in
+`.github/strangers/` have judged the wheel it uploads. Each file carries a PEP
+740 attestation, and the same run reads it back from the index and refuses one
+that names any publisher but that workflow, in this repository, in its `pypi`
+environment. `v0.1.0` and `v0.2.0` are GitHub releases only: install one from a
+clone at its tag, as below, and its tree names the distribution `ration`.
+
 ## Versions and releases
 
 **Releases are listed at <https://github.com/catincloud-labs/ration/releases>,
@@ -728,13 +755,15 @@ A clone at a tag holds this README as it stood at that tag. The one at
 `v0.1.0` still says no release had been cut, which is what it said before the
 tag existed; `CHANGELOG.md` at `main` records that sentence and when it died.
 
-A release carries no files of its own. The source archives GitHub attaches to
-every release hold no `.git`, so the tag cannot be checked from one; use the
-clone. A release is a signed `v*` tag and the GitHub release
-`.github/workflows/release.yml` creates from it, after verifying the tag's SSH
-signature against `.github/allowed_signers`, reading the tag's name as exactly
-`v` and the version `pyproject.toml` carries at the tagged commit, and running
-the suite there. The same workflow runs both checks on tags built wrong on
+A GitHub release carries no files of its own. The source archives GitHub
+attaches to every release hold no `.git`, so the tag cannot be checked from
+one; use the clone. A release is a signed `v*` tag, its upload to PyPI from
+`v0.2.1` on, and its GitHub release, both made by
+`.github/workflows/publish.yml` from the tag only after
+`.github/workflows/release.yml`, which it calls, has verified the tag's SSH
+signature against `.github/allowed_signers`, read the tag's name as exactly `v`
+and the version `pyproject.toml` carries at the tagged commit, and run the
+suite there. The same workflow runs both checks on tags built wrong on
 purpose (unsigned, lightweight, a gpg signature, signed by another key, a
 signature moved from another tag, no summary line; a name that is not the
 version, only begins with it or is cut short of it, a version from another
@@ -765,7 +794,8 @@ does not carry it and its release run did not compare its version; from a
 clone at `main`, `bash .github/release/check-version.sh v0.1.0` admits it.
 
 **Do not install by the bare name.** `ration` on PyPI is an unrelated project.
-This package is not published to a registry. Its wheel carries the suite that
+A release of this package from `v0.2.1` on is published to PyPI as
+`catincloud-ration` (*Installing*, above). Its wheel carries the suite that
 judges a store, as `ration.conformance`, and the suite's one dependency, pytest,
 is the `conformance` extra rather than a dependency of the package. The one
 module of the suite that needs more is `ration.conformance.postgres_violators`,
@@ -819,6 +849,9 @@ directory holding the clone:
 ```sh
 pip install "./ration[conformance]"
 ```
+
+From `v0.2.1` on, the same package and extra install from PyPI, with
+`pip install "catincloud-ration[conformance]"`.
 
 A tag whose tree has `src/ration/conformance/plugin.py` has the plugin;
 `v0.1.0` does not.
