@@ -1,13 +1,18 @@
 name: release
 
-# The release path for this repository, and the only one.
+# The checks that gate a release: the tag's SSH signature against
+# `.github/allowed_signers`, the tag's name read as `v` and the version
+# `pyproject.toml` carries at the tagged commit, both shown refusing tags built
+# wrong, and the suite at the tag. A signed `v*` tag starts
+# `.github/workflows/publish.yml`, the release path, which calls this file as
+# its `gate` job and uploads to PyPI and creates the GitHub release only after
+# every job here has passed (its header). This file does not start on a tag by
+# itself, so one tag starts one run. On every pull request and on `main` it
+# runs by its own triggers, where `refusal` is the job with work to do.
 #
-# A release here is a GitHub release on a signed `v*` tag, created only after
-# the tag's SSH signature has been verified against `.github/allowed_signers`,
-# the tag's name has been read as `v` and the version `pyproject.toml` carries
-# at the tagged commit, and the suite has passed there. Nothing is built or
-# pushed to a registry, and a release carries no files of its own (README,
-# "Versions and releases"). A merge cannot release.
+# This file builds nothing and pushes nothing to a registry, and the GitHub
+# release carries no files of its own (README, "Versions and releases"). A
+# merge cannot release.
 #
 # TO CUT A RELEASE, from a clone whose `gpg.format` is `ssh` and whose
 # `user.signingkey` is the key `.github/allowed_signers` names, at a commit
@@ -25,9 +30,9 @@ name: release
 # scripts `signature` runs, against tags and commits built wrong on purpose in
 # the runner's own clone, and asserts each one's exit code. It runs on every
 # pull request and on `main`, so the refusal is on record before a tag is
-# pushed, and on the tag push itself, where `release` needs it: a release is
-# created only in a run that also showed both checks rejecting, at the same
-# commit.
+# pushed, and on the tag push itself, where `publish.yml`'s `release` needs
+# it: a release is created only in a run that also showed both checks
+# rejecting, at the same commit.
 #
 # WHAT THIS DOES NOT PROVE:
 #   - The allowed-signers file, the scripts and this workflow all come from the
@@ -38,15 +43,23 @@ name: release
 #     at the tagged commit, and nothing more. It does not show that the version
 #     moved by the README's rule (a minor for a change to what the suite
 #     decides).
-#   - `release` compares the remote tag with the object `signature` verified,
-#     then creates the release by the tag's name a moment later. A tag replaced
-#     inside that moment is not caught.
+#   - `publish.yml`'s `release` compares the remote tag with the object
+#     `signature` verified, then creates the release by the tag's name a
+#     moment later. A tag replaced inside that moment is not caught.
 
+# No `tags:` here, and do not add one: a tag push that started this file too
+# would run these checks twice, and only `publish.yml`'s run can upload. On a
+# tag, `github.ref` in a called workflow is the caller's, so the tag-only jobs
+# below run there and skip on a pull request or on `main`.
 on:
   push:
-    tags: ["v*"]
     branches: [main]
   pull_request:
+  workflow_call:
+    outputs:
+      tag-object:
+        description: The tag object `signature` verified, for publish.yml's `release` job.
+        value: ${{ jobs.signature.outputs.tag-object }}
 
 permissions:
   contents: read
@@ -94,8 +107,8 @@ jobs:
           echo "Nothing has been released."
           git ls-remote origin "refs/tags/${GITHUB_REF_NAME}" "refs/tags/${GITHUB_REF_NAME}^{}" || true
 
-      # The object verified above, so `release` can refuse a tag that was
-      # moved after this read.
+      # The object verified above, so `publish.yml`'s `release` can refuse a
+      # tag that was moved after this read.
       - name: The tag object verified
         id: object
         run: echo "tag-object=$(git rev-parse "refs/tags/${GITHUB_REF_NAME}")" >> "$GITHUB_OUTPUT"
@@ -454,68 +467,3 @@ jobs:
           set -e
           [ "$got" -eq 0 ] || { echo "::error::A tag named for its commit's version exited $got, expected 0."; exit 1; }
           echo "Admitted, as built."
-
-  # The one job that may write, and its one write is a release on a tag that
-  # already exists: `--verify-tag` refuses to mint one, and a minted tag would
-  # start this workflow again.
-  release:
-    name: release
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [signature, suite, refusal]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-      VERIFIED: ${{ needs.signature.outputs.tag-object }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Create the release for this tag
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-
-          # First, before anything can read as satisfied: the tag on the remote
-          # must still be the object `signature` verified. A tag deleted and
-          # pushed again names a new object, and this run verified the old one.
-          REMOTE="$(gh api "repos/${GH_REPO}/git/ref/tags/${TAG}" --jq '.object.sha')"
-          if [ -z "$VERIFIED" ] || [ "$REMOTE" != "$VERIFIED" ]; then
-            echo "::error::refs/tags/${TAG} is ${REMOTE:-absent} on the remote, and this run verified '${VERIFIED}'. Nothing has been released."
-            exit 1
-          fi
-
-          # A re-run treats an existing release as satisfied: the contract is
-          # "the tag has a release", which an earlier attempt may have met.
-          if gh release view "$TAG" --json name >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists - satisfied."
-            exit 0
-          fi
-
-          # `signature` refused an empty summary already (exit 7); read again
-          # here because this job uses it.
-          SUMMARY="$(git tag -l --format='%(contents:subject)' "$TAG")"
-          if [ -z "$SUMMARY" ]; then
-            echo "::error::${TAG}'s annotation has no first line, so there is no hand-written summary for the release."
-            exit 1
-          fi
-          RUN="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          {
-            printf '%s\n\n' "$SUMMARY"
-            printf 'The tag signature was verified against `.github/allowed_signers`, the tag was read as named for the version in `pyproject.toml`, both checks were shown refusing tags built wrong, and the suite passed at %s, in %s.\n\n' "$GITHUB_SHA" "$RUN"
-            printf 'To check the tag yourself, from a clone at this tag:\n\n'
-            printf '    bash .github/release/verify-tag.sh %s .github/allowed_signers\n' "$TAG"
-            printf '    bash .github/release/check-version.sh %s\n' "$TAG"
-          } > "$RUNNER_TEMP/release-body.md"
-
-          if ! gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/release-body.md"; then
-            if gh release view "$TAG" --json name >/dev/null 2>&1; then
-              echo "Release ${TAG} appeared concurrently - satisfied."
-              exit 0
-            fi
-            echo "::error::Could not create the release for ${TAG}."
-            exit 1
-          fi
