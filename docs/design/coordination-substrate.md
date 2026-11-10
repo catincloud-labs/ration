@@ -110,7 +110,7 @@ key, no ordering across keys, no watch, no queue and no lock held across a
 round trip. These are absences in the Protocol rather than tests: adding any of
 them is a change to `src/ration/contract.py`, and so to the contract.
 
-**A conflict's version is not the key's current version.** `Conflict.version`
+**A conflict's version is not promised to be the key's current version.** `Conflict.version`
 is a version the key has held. Under concurrency `PostgresStore` reports the
 version the loser came *from*, and the contract permits it; a caller that needs
 the current version reads. The compare-and-set test accepts any version the key
@@ -118,7 +118,7 @@ has held, and `previous-version` (`src/ration/conformance/permitted.py`), regist
 violations, is the correct store that holds it to that: once a key has been
 written, it answers every refusal with the version the key held before its
 current one, so the test tightened to the current version fails it and no
-other registered store. The
+other correct store. The
 Postgres behaviour is pinned, deterministically, by
 `tests/test_postgres_conflict_version.py::test_a_losing_update_reports_the_version_it_came_from`
 and `tests/test_postgres_conflict_version.py::test_a_losing_create_reports_absence`.
@@ -238,8 +238,10 @@ the contract.
 
 `src/ration/frame.py`: a fixed big-endian binary header (`HEADER_SIZE`; the
 layout table is in the module docstring) around a body the module never looks
-inside. It owns no key. It leans on the contract once: a lease version, which
-property 1 makes monotonic and never reused, is a sender's epoch. A frame can
+inside. It owns no key. It leans on the contract once, and as a
+recommendation: the module names a lease version, which property 1 makes
+monotonic and never reused, as the right source for a sender's epoch, and does
+not check where an epoch came from. A frame can
 also travel as text, base64url with no padding, for a route that takes no
 body.
 

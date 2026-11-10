@@ -4,9 +4,10 @@
 releases (README, *Versions and releases*). This file holds what this
 repository's documents used to say, moved here when each sentence was found
 dead and rewritten (`AGENTS.md`, *Repo conventions*). A reader carrying an old
-claim finds it here, labelled dead, rather than finding nothing. One section,
-*Installing, and the first upload's own page*, holds sentences moved while
-still true, and says why.
+claim finds it here, labelled dead, rather than finding nothing. Two sections,
+*Installing, and the first upload's own page* and, under
+`docs/design/coordination-substrate.md`, *The review stamp, and the command
+that reads from it*, hold sentences moved while still true, and each says why.
 
 **FROZEN, entry by entry: read every date below as "true when written".**
 Nothing in this file is current. Each entry quotes the dead text, says when it
@@ -326,18 +327,19 @@ with two commits to read from.
   with `RATION_REQUIRE_POSTGRES=1`, and each one passed, failed under strict
   xfail for the violator registered against its property, or was skipped
   where a store has no in-process seam for the deterministic gate"** The
-  value of the **Reviewed** line, from `634c5cf` (2026-11-06T22:59:16Z), its
-  last clause in this wording from `b78c76e` (2026-11-06T23:33:50Z). The line
-  now names the second reading and points here for the first.
+  value of the **Reviewed** line, from `634c5cf` (2026-11-06T22:59:16Z), in
+  this wording from `b78c76e` (2026-11-06T23:33:50Z). The line now names the
+  second reading and points here for the first.
 - **`git log --oneline 73428ba..HEAD -- src/ration tests`** The command under
-  the header, from `634c5cf` (2026-11-06T22:59:16Z). Read dead 2026-11-10
-  against the page at `e73cf2a`, on two counts. It reads from the first
-  reading's commit. And its paths leave out the root `conftest.py`, which the
-  page has described under *How to read a citation* since `bc4001f`
-  (2026-11-09T21:14:03Z), so a change to that file alone would have answered
-  empty, which the sentence after the command reads as nothing the page
-  describes having moved. It now reads from `e73cf2a` and names
-  `conftest.py`, which the **Describes** list gains.
+  the header, from `634c5cf` (2026-11-06T22:59:16Z). Its paths were read dead
+  2026-11-10 against the page at `e73cf2a`: they leave out the root
+  `conftest.py`, which the page has described under *How to read a citation*
+  since `bc4001f` (2026-11-09T21:14:03Z), so a change to that file alone would
+  have answered empty, which the sentence after the command reads as nothing
+  the page describes having moved. Its commit was true at `e73cf2a`, where
+  the stamp still named `73428ba`, and is moved with the stamp, as the entry
+  above is. It now reads from `e73cf2a` and names `conftest.py`, which the
+  **Describes** list gains.
 
 ### The substrate's properties
 
@@ -350,6 +352,43 @@ with two commits to read from.
   own, `compare-and-set` and `atomicity`. The table's first two rows are those
   two, so the operation is two of the six rows, not a fifth property. The
   sentence now says so.
+
+### A conflict's version
+
+Both entries were found by the cold review of the pull request that re-stamped
+the page at `e73cf2a` (#18).
+
+- **"A conflict's version is not the key's current version."** The bold lead
+  of the paragraph after the substrate's table, from `634c5cf`
+  (2026-11-06T22:59:16Z). Read dead 2026-11-10 against `src/ration/memory.py`
+  and `src/ration/duckdb_store.py` at `e73cf2a`: `MemoryStore` answers a
+  refusal with `Conflict(reading.version)` and `DuckDBStore` with
+  `Conflict(self._version_now(key))`, the key's current version, and the
+  compare-and-set test tightened to the current version passes `correct`,
+  `duckdb` and `postgres`. `Conflict` in `src/ration/contract.py` says the
+  field is not a promise about the current version, not that it never is.
+  The lead now says the version is not promised to be the current one.
+- **"so the test tightened to the current version fails it and no other
+  registered store."** In the same paragraph, in this wording from `e0604ee`
+  (2026-11-09T19:00:29Z), its last words "no other registered store" from
+  `93183f4` (2026-11-09T18:38:31Z). Read dead 2026-11-10 against a run at
+  `e73cf2a` with the test's three `assert refused.version in versions_held`
+  replaced by `assert refused.version == store.read(key).version`: it fails
+  `previous-version`, and `create-always`, `echoes-expected` and
+  `conflict-writes`, registered stores, fail it too, under strict xfail. The
+  sentence now says no other correct store.
+
+### The frame's use of the contract
+
+- **"It leans on the contract once: a lease version, which property 1 makes
+  monotonic and never reused, is a sender's epoch."** Under *The frame: a
+  checked carrier, with no state of its own*, from `634c5cf`
+  (2026-11-06T22:59:16Z). Read dead 2026-11-10 against `src/ration/frame.py`
+  at `e73cf2a`, which says where a sender's epoch comes from is the sender's,
+  names a lease version as the right source, and does not check where the
+  number came from. Found by the cold review of the pull request that
+  re-stamped the page (#18). The sentence now says the frame leans on the
+  contract as a recommendation and checks no epoch's source.
 
 ### What the suite does not show
 
@@ -364,6 +403,19 @@ with two commits to read from.
   repository's run judges the stores in `tests/cases.py`, and its last
   sentence keeps its words and gains a clause naming the plugin and the
   README's *Running the suite against your own store*.
+
+## CHANGELOG.md
+
+### The header
+
+- **"One section, *Installing, and the first upload's own page*, holds
+  sentences moved while still true, and says why."** The last sentence of
+  the paragraph headed "Not a release log", from `d00a8b3`
+  (2026-11-10T01:11:28Z). Read dead 2026-11-10 against this file as this
+  entry's commit leaves it, where the section *The review stamp, and the
+  command that reads from it*, under `docs/design/coordination-substrate.md`,
+  holds a sentence moved while still true as well (#18). Found by the cold
+  review of that pull request. The sentence now names both sections.
 
 ## pyproject.toml
 
