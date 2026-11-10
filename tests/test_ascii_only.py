@@ -135,7 +135,7 @@ def test_the_package_metadata_is_ascii() -> None:
 
     import importlib.metadata as md
 
-    meta = md.metadata("ration")
+    meta = md.metadata("catincloud-ration")
     for field in ("Summary", "Name", "Version"):
         value = meta.get(field) or ""
         assert value.isascii(), f"non-ASCII in package metadata {field}: {value!r}"

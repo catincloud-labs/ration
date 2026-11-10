@@ -294,9 +294,9 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/stranger"
           shopt -s nullglob
-          wheels=("$RUNNER_TEMP"/dist/ration-*.whl)
+          wheels=("$RUNNER_TEMP"/dist/catincloud_ration-*.whl)
           if [ "${#wheels[@]}" -ne 1 ]; then
-            echo "::error::Expected one ration wheel in $RUNNER_TEMP/dist, found ${#wheels[@]}."
+            echo "::error::Expected one catincloud_ration wheel in $RUNNER_TEMP/dist, found ${#wheels[@]}."
             exit 1
           fi
           "$RUNNER_TEMP/stranger/bin/python" -m pip install "${wheels[0]}[conformance]"

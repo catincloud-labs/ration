@@ -1,14 +1,38 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ration"
-version = "0.2.0"
+# The distribution is `catincloud-ration` and the import name is `ration`. The
+# bare name `ration` on PyPI is an unrelated project that installs a top-level
+# `ration` package of its own, so the two cannot share an environment (README,
+# "Installing").
+name = "catincloud-ration"
+version = "0.2.1"
 description = "A bounded claim on a finite shared pool, granted for a period and refused rather than overdrawn."
 readme = "README.md"
-license = { file = "LICENSE" }
+# The PEP 639 form: an SPDX expression, which the built metadata carries as
+# `License-Expression`, and the file it names. No `License ::` classifier,
+# which PEP 639 excludes beside an expression.
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "David Anaya" }]
+keywords = ["lease", "compare-and-set", "coordination", "conformance", "pytest-plugin"]
+# `3 - Alpha` claims no stability: while the major version is 0, a minor
+# release may change what the suite decides (README, "Versions and releases").
+# The Python versions are the ones CI runs the suite on, the floor and 3.13.
+# `Typing :: Typed` because the wheel ships `src/ration/py.typed`, which the
+# `build` job in `.github/workflows/publish.yml` reads back from the wheel.
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: Pytest",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
 
 # Nothing here constrains the ceiling -- there is no orchestrator dependency
 # dragging a supported-version window along with it.
@@ -50,6 +74,14 @@ dev = ["pytest>=8", "psycopg[binary]>=3.2", "duckdb>=1.1"]
 # and a deployment that installs `ration` to hold a lease never installs the
 # framework that judges a store.
 conformance = ["pytest>=8"]
+
+# Each one a URL of this repository, which PyPI checks against the trusted
+# publisher and shows under its verified details.
+[project.urls]
+Homepage = "https://github.com/catincloud-labs/ration"
+Repository = "https://github.com/catincloud-labs/ration"
+Issues = "https://github.com/catincloud-labs/ration/issues"
+Changelog = "https://github.com/catincloud-labs/ration/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ration"]
