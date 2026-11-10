@@ -1,7 +1,7 @@
 # The coordination substrate: what each piece guarantees, what it refuses, and the test that shows it
 
 - **Status:** living
-- **Describes:** `src/ration/contract.py`, `src/ration/lease.py`,
+- **Describes:** `conftest.py`, `src/ration/contract.py`, `src/ration/lease.py`,
   `src/ration/pool.py`, `src/ration/addressing.py`, `src/ration/publish.py`,
   `src/ration/frame.py`, `src/ration/postgres.py`,
   `src/ration/duckdb_store.py`, `src/ration/memory.py`,
@@ -16,11 +16,12 @@
   `tests/test_frame.py`, `tests/test_postgres_conflict_version.py`,
   `tests/test_duckdb_single_process.py`,
   `tests/test_the_suite_discriminates.py`
-- **Reviewed:** 2026-11-06 at `73428ba` - first reading: every test this page
+- **Reviewed:** 2026-11-10 at `e73cf2a` - second reading: every test this page
   names was run at that commit against the in-memory cases, DuckDB and a real
   Postgres with `RATION_REQUIRE_POSTGRES=1`, and each one passed, failed under
   strict xfail for the violator registered against its property, or was
-  skipped where a store has no in-process seam for the deterministic gate
+  skipped where a store has no in-process seam for the deterministic gate. The
+  first reading, at `73428ba` on 2026-11-06, is in `CHANGELOG.md`
 
 This page **describes and decides nothing.** The contract is stated in
 `src/ration/contract.py` and decided by `src/ration/conformance/`; where this page
@@ -37,7 +38,7 @@ judged against (**Reviewed**). Whether the code has moved since is computed,
 not remembered:
 
 ```sh
-git log --oneline 73428ba..HEAD -- src/ration tests
+git log --oneline e73cf2a..HEAD -- conftest.py src/ration tests
 ```
 
 An empty answer means nothing the page describes has moved since its review;
@@ -90,8 +91,10 @@ of its own; its docstring points to the pool's, whose grant is made by
 ## The substrate: one key, compare-and-set against a version
 
 The whole store is two operations, `read` and `compare_and_set`, on one key at
-a time (`Store` in `src/ration/contract.py`). Four numbered properties hold of
-it, and the operation itself is a fifth:
+a time (`Store` in `src/ration/contract.py`). The operation itself is stated
+unnumbered, and the suite decides it as two properties of its own,
+`compare-and-set` and `atomicity`, the table's first two rows. Four numbered
+properties hold of the substrate besides:
 
 | Guarantee | What is refused | Shown by | Violators it rejects |
 | --- | --- | --- | --- |
@@ -299,8 +302,10 @@ Stated so each reads as a known absence rather than a discovery:
   in-process seam (`postgres`, `postgres-naive`, `duckdb`), atomicity is decided
   by the threaded probe, and a probe that finds nothing has not shown there was
   nothing. A run reports the gate as skipped for those cases.
-- **Any store not registered in `tests/cases.py`.** A store's guarantee is
-  shown by running this suite against that store.
+- **Any store no run has judged.** This repository's run judges the stores in
+  `tests/cases.py`. A store's guarantee is shown by running this suite against
+  that store, which `ration.conformance.plugin` lets any project do for a store
+  of its own (README, *Running the suite against your own store*).
 - **A network partition.** The cross-process tests run on one machine.
 
 ## When a sentence on this page dies

@@ -313,6 +313,58 @@ description the README at this entry's commit would become.
   **Reviewed** line is unchanged: it is a reading of its own day, and
   re-reading the page at a new head is separate work (#18).
 
+### The review stamp, and the command that reads from it
+
+The first entry was true when it was moved: a reading is a statement about
+the commit it names, and this one names `73428ba`. It is moved because the
+page now carries a second reading, at `e73cf2a` on 2026-11-10 (#18), and a
+page stamped twice in its header would leave the command beneath the stamp
+with two commits to read from.
+
+- **"2026-11-06 at `73428ba` - first reading: every test this page names was
+  run at that commit against the in-memory cases, DuckDB and a real Postgres
+  with `RATION_REQUIRE_POSTGRES=1`, and each one passed, failed under strict
+  xfail for the violator registered against its property, or was skipped
+  where a store has no in-process seam for the deterministic gate"** The
+  value of the **Reviewed** line, from `634c5cf` (2026-11-06T22:59:16Z), its
+  last clause in this wording from `b78c76e` (2026-11-06T23:33:50Z). The line
+  now names the second reading and points here for the first.
+- **`git log --oneline 73428ba..HEAD -- src/ration tests`** The command under
+  the header, from `634c5cf` (2026-11-06T22:59:16Z). Read dead 2026-11-10
+  against the page at `e73cf2a`, on two counts. It reads from the first
+  reading's commit. And its paths leave out the root `conftest.py`, which the
+  page has described under *How to read a citation* since `bc4001f`
+  (2026-11-09T21:14:03Z), so a change to that file alone would have answered
+  empty, which the sentence after the command reads as nothing the page
+  describes having moved. It now reads from `e73cf2a` and names
+  `conftest.py`, which the **Describes** list gains.
+
+### The substrate's properties
+
+- **"Four numbered properties hold of it, and the operation itself is a
+  fifth:"** Under *The substrate: one key, compare-and-set against a version*,
+  the sentence before the table, from `634c5cf` (2026-11-06T22:59:16Z). Read
+  dead 2026-11-10 against `src/ration/contract.py` at `e73cf2a`, whose
+  docstring, in its wording from `cbe4ba6` (2026-11-09T15:50:34Z), states the
+  operation unnumbered and says the suite decides it as two properties of its
+  own, `compare-and-set` and `atomicity`. The table's first two rows are those
+  two, so the operation is two of the six rows, not a fifth property. The
+  sentence now says so.
+
+### What the suite does not show
+
+- **"Any store not registered in `tests/cases.py`."** The bold lead of a
+  bullet under *What the suite does not show*, in this wording from `f99e485`
+  (2026-11-09T20:52:08Z). Read dead 2026-11-10 against
+  `src/ration/conformance/plugin.py` at `e73cf2a`, from `36c0ea9`
+  (2026-11-09T22:14:03Z) (#21): a store any project returns from the hook
+  `pytest_ration_cases` is judged by the suite in that project's run, so a
+  store not in `tests/cases.py` is no longer outside what the suite can show.
+  The lead now names a store no run has judged, the bullet says this
+  repository's run judges the stores in `tests/cases.py`, and its last
+  sentence keeps its words and gains a clause naming the plugin and the
+  README's *Running the suite against your own store*.
+
 ## pyproject.toml
 
 ### The pytest options
