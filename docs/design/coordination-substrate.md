@@ -1,7 +1,7 @@
 # The coordination substrate: what each piece guarantees, what it refuses, and the test that shows it
 
 - **Status:** living
-- **Describes:** `src/ration/contract.py`, `src/ration/lease.py`,
+- **Describes:** `conftest.py`, `src/ration/contract.py`, `src/ration/lease.py`,
   `src/ration/pool.py`, `src/ration/addressing.py`, `src/ration/publish.py`,
   `src/ration/frame.py`, `src/ration/postgres.py`,
   `src/ration/duckdb_store.py`, `src/ration/memory.py`,
@@ -16,11 +16,12 @@
   `tests/test_frame.py`, `tests/test_postgres_conflict_version.py`,
   `tests/test_duckdb_single_process.py`,
   `tests/test_the_suite_discriminates.py`
-- **Reviewed:** 2026-11-06 at `73428ba` - first reading: every test this page
+- **Reviewed:** 2026-11-10 at `e73cf2a` - second reading: every test this page
   names was run at that commit against the in-memory cases, DuckDB and a real
   Postgres with `RATION_REQUIRE_POSTGRES=1`, and each one passed, failed under
   strict xfail for the violator registered against its property, or was
-  skipped where a store has no in-process seam for the deterministic gate
+  skipped where a store has no in-process seam for the deterministic gate. The
+  first reading, at `73428ba` on 2026-11-06, is in `CHANGELOG.md`
 
 This page **describes and decides nothing.** The contract is stated in
 `src/ration/contract.py` and decided by `src/ration/conformance/`; where this page
@@ -37,7 +38,7 @@ judged against (**Reviewed**). Whether the code has moved since is computed,
 not remembered:
 
 ```sh
-git log --oneline 73428ba..HEAD -- src/ration tests
+git log --oneline e73cf2a..HEAD -- conftest.py src/ration tests
 ```
 
 An empty answer means nothing the page describes has moved since its review;
@@ -90,8 +91,10 @@ of its own; its docstring points to the pool's, whose grant is made by
 ## The substrate: one key, compare-and-set against a version
 
 The whole store is two operations, `read` and `compare_and_set`, on one key at
-a time (`Store` in `src/ration/contract.py`). Four numbered properties hold of
-it, and the operation itself is a fifth:
+a time (`Store` in `src/ration/contract.py`). The operation itself is stated
+unnumbered, and the suite decides it as two properties of its own,
+`compare-and-set` and `atomicity`, the table's first two rows. Four numbered
+properties hold of the substrate besides:
 
 | Guarantee | What is refused | Shown by | Violators it rejects |
 | --- | --- | --- | --- |
@@ -107,7 +110,7 @@ key, no ordering across keys, no watch, no queue and no lock held across a
 round trip. These are absences in the Protocol rather than tests: adding any of
 them is a change to `src/ration/contract.py`, and so to the contract.
 
-**A conflict's version is not the key's current version.** `Conflict.version`
+**A conflict's version is not promised to be the key's current version.** `Conflict.version`
 is a version the key has held. Under concurrency `PostgresStore` reports the
 version the loser came *from*, and the contract permits it; a caller that needs
 the current version reads. The compare-and-set test accepts any version the key
@@ -115,7 +118,7 @@ has held, and `previous-version` (`src/ration/conformance/permitted.py`), regist
 violations, is the correct store that holds it to that: once a key has been
 written, it answers every refusal with the version the key held before its
 current one, so the test tightened to the current version fails it and no
-other registered store. The
+other correct store. The
 Postgres behaviour is pinned, deterministically, by
 `tests/test_postgres_conflict_version.py::test_a_losing_update_reports_the_version_it_came_from`
 and `tests/test_postgres_conflict_version.py::test_a_losing_create_reports_absence`.
@@ -235,8 +238,10 @@ the contract.
 
 `src/ration/frame.py`: a fixed big-endian binary header (`HEADER_SIZE`; the
 layout table is in the module docstring) around a body the module never looks
-inside. It owns no key. It leans on the contract once: a lease version, which
-property 1 makes monotonic and never reused, is a sender's epoch. A frame can
+inside. It owns no key. It leans on the contract once, and as a
+recommendation: the module names a lease version, which property 1 makes
+monotonic and never reused, as the right source for a sender's epoch, and does
+not check where an epoch came from. A frame can
 also travel as text, base64url with no padding, for a route that takes no
 body.
 
@@ -299,8 +304,10 @@ Stated so each reads as a known absence rather than a discovery:
   in-process seam (`postgres`, `postgres-naive`, `duckdb`), atomicity is decided
   by the threaded probe, and a probe that finds nothing has not shown there was
   nothing. A run reports the gate as skipped for those cases.
-- **Any store not registered in `tests/cases.py`.** A store's guarantee is
-  shown by running this suite against that store.
+- **Any store no run has judged.** This repository's run judges the stores in
+  `tests/cases.py`. A store's guarantee is shown by running this suite against
+  that store, which `ration.conformance.plugin` lets any project do for a store
+  of its own (README, *Running the suite against your own store*).
 - **A network partition.** The cross-process tests run on one machine.
 
 ## When a sentence on this page dies
