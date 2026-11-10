@@ -4,7 +4,9 @@
 releases (README, *Versions and releases*). This file holds what this
 repository's documents used to say, moved here when each sentence was found
 dead and rewritten (`AGENTS.md`, *Repo conventions*). A reader carrying an old
-claim finds it here, labelled dead, rather than finding nothing.
+claim finds it here, labelled dead, rather than finding nothing. One section,
+*Installing, and the first upload's own page*, holds sentences moved while
+still true, and says why.
 
 **FROZEN, entry by entry: read every date below as "true when written".**
 Nothing in this file is current. Each entry quotes the dead text, says when it
@@ -96,12 +98,14 @@ from `git log --reverse -S"<phrase>" -- <file>`. Dates are UTC.
 
 ### Installing, and the first upload's own page
 
-Each of the three sentences below was true when it was moved, and each would
-have been false on PyPI from the moment it was published. Whatever README the
-`v0.2.1` tag carries becomes the description PyPI shows for `0.2.1`, and an
-uploaded version's description is never replaced. So they were rewritten on
-2026-11-10, before that tag, to state the release path, which is true before the
-upload and after it. Each is read against the tree this entry's commit leaves.
+Each of the three sentences below was true when it was moved. Whatever README
+the `v0.2.1` tag carries becomes the description PyPI shows for `0.2.1`, and an
+uploaded version's description is never replaced. The first two would have
+been false on that page from the moment it was published. The third would have
+read there as a condition the page itself had already met. So all three were
+rewritten on 2026-11-10, before that tag, to state the release path, which is
+true before the upload and after it. Each was read against the `0.2.1`
+description the README at this entry's commit would become.
 
 - **"No release is on PyPI yet. The first that
   `.github/workflows/publish.yml` uploads is `v0.2.1`; until then, install from
@@ -112,14 +116,17 @@ upload and after it. Each is read against the tree this entry's commit leaves.
   its tag.
 - **"No release of this package is on PyPI yet; the first to be uploaded, as
   `catincloud-ration`, is `v0.2.1` (*Installing*, above)."** The second
-  sentence of the paragraph headed "Do not install by the bare name", from
-  `239f95a` (2026-11-10T00:41:31Z). It now says this package's releases are on
-  PyPI as `catincloud-ration` from `v0.2.1` on.
+  sentence of the paragraph headed "Do not install by the bare name", under
+  *Versions and releases*, from `239f95a` (2026-11-10T00:41:31Z). It now says
+  `publish.yml` uploads this package's releases to PyPI as `catincloud-ration`
+  from `v0.2.1` on.
 - **"Once `v0.2.1` is uploaded, the same package and extra install from PyPI,
   with `pip install "catincloud-ration[conformance]"`."** The sentence under
   *Running the suite against your own store* that follows the install from a
-  clone, from `239f95a` (2026-11-10T00:41:31Z). It now begins "From `v0.2.1`
-  on".
+  clone. Its opening clause, "Once `v0.2.1` is uploaded", is from `239f95a`
+  (2026-11-10T00:41:31Z). The rest stood there from `ca2c397`
+  (2026-11-10T00:26:22Z), which wrote it as "From `v0.2.1` on, ...". The
+  sentence now reads as `ca2c397` wrote it.
 
 ### Paths to the suite
 

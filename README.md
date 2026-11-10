@@ -797,8 +797,8 @@ does not carry it and its release run did not compare its version; from a
 clone at `main`, `bash .github/release/check-version.sh v0.1.0` admits it.
 
 **Do not install by the bare name.** `ration` on PyPI is an unrelated project.
-This package's releases are on PyPI as `catincloud-ration` from `v0.2.1` on
-(*Installing*, above). Its wheel carries the suite that
+`.github/workflows/publish.yml` uploads this package's releases to PyPI as
+`catincloud-ration` from `v0.2.1` on (*Installing*, above). Its wheel carries the suite that
 judges a store, as `ration.conformance`, and the suite's one dependency, pytest,
 is the `conformance` extra rather than a dependency of the package. The one
 module of the suite that needs more is `ration.conformance.postgres_violators`,
