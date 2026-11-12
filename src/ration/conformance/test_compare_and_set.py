@@ -2,13 +2,18 @@
 
 The contract states this as the operation rather than as one of its four
 numbered properties, which makes it the easiest thing in the contract to assume
-rather than check. Violated by `create-always` and by `conflict-writes`.
+rather than check. Violated by `create-always`, which lets a write to an absent
+key land whatever version the caller expected; by `conflict-writes`, which
+reports a conflict and writes anyway; and by `echoes-expected`, which refuses
+correctly and hands back the caller's own expected version, one the key may
+never have held.
 
 It is one test rather than several on purpose. A store expected to fail this
 property is marked strict-xfail against every test carrying it, so splitting the
 assertions into a test per clause would require each violator to fail all of
-them -- and `create-always` is correct about deletion, which is precisely why it
-is a useful violator. The property is the unit the suite reports on.
+them -- and `create-always` is correct about deletion, and `echoes-expected` is
+wrong only in the version a conflict carries, which is precisely why each is a
+useful violator. The property is the unit the suite reports on.
 
 Measures: src/ration/contract.py, the operation (compare-and-set)
 """
