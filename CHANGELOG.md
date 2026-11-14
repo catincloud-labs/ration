@@ -172,6 +172,19 @@ description the README at this entry's commit would become.
   registry of stores is `tests/cases.py` (#20). The sentence now names the
   suite the package ships, `src/ration/conformance/`.
 
+### What the closing keywords job reads
+
+- **"Guarded, not merely written down: the `closing keywords` job runs the
+  guard over the PR body, every commit message and GitHub's own
+  `closingIssuesReferences`."** The first sentence of the bullet under the
+  closing-verb rule in *Change workflow*, in this wording from `9ada7a1`
+  (2026-10-29T00:51:42Z), the commit that published the tree. Read dead
+  2026-11-14 against `.github/workflows/checks.yml` as this entry's commit
+  leaves it, where the job also scans the pull request title, in a step of
+  its own between the body scan and the commit scan. The sentence now names
+  the title, and the next one says why a close there is refused even when
+  meant.
+
 ### Every CI check runs from this tree
 
 - **"`.github/workflows/checks.yml`, `pr-hygiene.yml` and `release.yml` are

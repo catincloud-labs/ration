@@ -126,9 +126,12 @@ moves stand behind that rule, each paid for in this organisation:
   so "part of #N" and "refs #N" are safe. When you do mean it, add an
   `Autoclose: #N` trailer enumerating exactly what closes.
   - Guarded, not merely written down: the `closing keywords` job runs the
-    guard over the PR body, every commit message and GitHub's own
-    `closingIssuesReferences`. Enable the hook per clone - it does not install
-    itself: `git config core.hooksPath .githooks`.
+    guard over the PR body, the PR title, every commit message and GitHub's
+    own `closingIssuesReferences`. A title becomes the merge commit's message
+    and holds no trailer, so a closing verb before `#N` there is refused even
+    when you mean it: a close you mean goes in the body, with its trailer.
+    Enable the hook per clone - it does not install itself:
+    `git config core.hooksPath .githooks`.
   - The same job fails when `.githooks/commit-msg` is tracked at any index
     mode but `100755` (`scripts/check_hook_mode.py`, its self-test first), since
     git on Linux and macOS skips a hook that is not executable and Git for
