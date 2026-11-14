@@ -179,7 +179,7 @@ description the README at this entry's commit would become.
   `closingIssuesReferences`."** The first sentence of the bullet under the
   closing-verb rule in *Change workflow*, in this wording from `9ada7a1`
   (2026-10-29T00:51:42Z), the commit that published the tree. Read dead
-  2026-11-13 against `.github/workflows/checks.yml` as this entry's commit
+  2026-11-14 against `.github/workflows/checks.yml` as this entry's commit
   leaves it, where the job also scans the pull request title, in a step of
   its own between the body scan and the commit scan. The sentence now names
   the title, and the next one says why a close there is refused even when
