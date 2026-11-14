@@ -2,8 +2,9 @@ name: checks
 
 # `edited` is here on purpose. A body edit is the normal way an unacknowledged
 # close gets introduced or removed, so without it a corrected body never
-# re-runs and a broken one never re-checks. `synchronize` covers pushes to the
-# branch.
+# re-runs and a broken one never re-checks. A retitle is an `edited` event too,
+# so a title the closing keywords job refused is scanned again once it is
+# changed. `synchronize` covers pushes to the branch.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
@@ -71,6 +72,42 @@ jobs:
         run: |
           gh pr view "$PR" --json body -q .body > "$RUNNER_TEMP/pr-body.md"
           python scripts/check_closing_keywords.py "$RUNNER_TEMP/pr-body.md"
+
+      # A pull request here merges with a merge commit whose message carries
+      # the title, and a title holds no `Autoclose:` trailer, so a closing verb
+      # before `#N` in a title is refused outright. The body's trailer does not
+      # answer it: the reconcile below reads the body alone. The title is read
+      # the way the body is, with `gh pr view`, so the two cannot disagree.
+      #
+      # The title goes to the script twice. The first call refuses a close the
+      # title does not acknowledge. A title that is itself a trailer line, such
+      # as "Autoclose: #N closes #N", passes that call by acknowledging its own
+      # close, so the second call reconciles the title against an empty answer
+      # from GitHub: any number a title's trailer names is then an overclaim.
+      # What counts as a line or a trailer stays the script's alone.
+      - name: Scan the pull request title
+        run: |
+          gh pr view "$PR" --json title -q .title > "$RUNNER_TEMP/pr-title.txt"
+          status=0
+          python scripts/check_closing_keywords.py "$RUNNER_TEMP/pr-title.txt" || status=$?
+          if [ "$status" -eq 0 ]; then
+            # Its output speaks of GitHub's answer, which here stands for "a
+            # title acknowledges nothing", so it prints only when it refuses.
+            python scripts/check_closing_keywords.py --github-closes '' \
+              "$RUNNER_TEMP/pr-title.txt" > "$RUNNER_TEMP/pr-title-trailer.txt" 2>&1 || status=$?
+            if [ "$status" -eq 0 ]; then
+              echo "OK - the title names no issue in an Autoclose trailer."
+              exit 0
+            fi
+            cat "$RUNNER_TEMP/pr-title-trailer.txt"
+          fi
+          # Exit 2 is the script failing to run, which the remedy below is not for.
+          if [ "$status" -eq 1 ]; then
+            echo "::error::The pull request title closes an issue or names one in a trailer, and a title cannot acknowledge a close."
+            echo "Retitle it without the closing verb before the number, and without"
+            echo "a trailer. A close you mean goes in the body, with its 'Autoclose:' trailer."
+          fi
+          exit "$status"
 
       - name: Scan every commit message in the pull request
         run: |
