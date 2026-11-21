@@ -1,0 +1,27 @@
+{
+  "src": {
+    "rule 3": {
+      "reads": [
+        "a frame another node sends, as bytes through ration.frame.decode or as a header's text through ration.frame.decode_text"
+      ],
+      "readers": [
+        {
+          "check": "src/ration/conformance/test_frame_length.py",
+          "violator": "src/ration/conformance/frame_violators.py::NoCeilingCodec"
+        },
+        {
+          "check": "src/ration/conformance/test_frame_text.py",
+          "violator": "src/ration/conformance/frame_violators.py::WalksBeforeBoundingCodec"
+        }
+      ]
+    },
+    "rule 5": {
+      "readers": [
+        {
+          "check": "tests/test_load_time_checks.py",
+          "violator": "tests/test_load_time_checks.py::PLANTS"
+        }
+      ]
+    }
+  }
+}

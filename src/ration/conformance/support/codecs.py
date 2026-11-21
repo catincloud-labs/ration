@@ -172,7 +172,10 @@ def _case(name: str, violates: set[str], codec_class: type[FrameCodec]) -> Codec
     return case
 
 
-assert FRAME_VERSION == 1, "the forge above packs v1's layout; a new version re-derives it"
+# The forge above packs v1's layout, so a new frame version re-derives it. A
+# `raise`, not an `assert`, so the guard holds under `python -O` too.
+if FRAME_VERSION != 1:
+    raise ValueError("the forge packs v1's layout; a new frame version re-derives it")
 
 CODECS: list[CodecCase] = [
     _case("correct", set(), FrameCodec),
@@ -204,3 +207,8 @@ CODECS: list[CodecCase] = [
     _case("collapses-layers", {"frame-text"}, CollapsesLayersCodec),
     _case("walks-before-bounding", {"frame-text"}, WalksBeforeBoundingCodec),
 ]
+
+# A case's name is its test id and the name a strict xfail reports, so two
+# cases with one name would be one line in a run that judged two codecs.
+if len({case.name for case in CODECS}) != len(CODECS):
+    raise ValueError("two codec cases share a name")

@@ -16,8 +16,11 @@ bytes present are more than the largest frame holds, and a header alone is
 enough to say so. The last is what lets a receiver refuse before it buffers:
 told `truncated`, it would read on for the body.
 
-Violated by `unchecked-length`, by `ignores-trailing`, and by `no-ceiling`,
-which takes the field's own limit as the frame's.
+Violated by `unchecked-length`, by `ignores-trailing`, and by `no-ceiling`
+(`NoCeilingCodec` in `src/ration/conformance/frame_violators.py`), which takes
+the field's own limit as the frame's. That last violator is the one the
+coding standard's rule 3 names for frames read as bytes: `power-of-ten.json`
+declares this module as the check that reads the maximum.
 
 Measures: README.md, Frame property 1
 Measures: scripts/check_power_of_ten.py, rule 3

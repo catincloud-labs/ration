@@ -340,3 +340,8 @@ MEMORY_CASES: tuple[Case, ...] = (
     _memory_case("fail-open", {"unreachable-refuses"}, MemoryStore, wrap=FailOpenStore),
     _memory_case("token-dropping", {"ambiguity-resolvable"}, TokenDroppingStore),
 )
+
+# A case's name is its test id and the name a strict xfail reports, so two
+# cases with one name would be one line in a run that judged two stores.
+if len({case.name for case in MEMORY_CASES}) != len(MEMORY_CASES):
+    raise ValueError("two memory cases share a name")

@@ -11,12 +11,9 @@ pinned as an assertion rather than left to the log reader.
 from __future__ import annotations
 
 import base64
-import importlib.util
 import random
 import string
-import sys
 import tracemalloc
-import types
 import zlib
 from collections.abc import Buffer
 
@@ -295,37 +292,6 @@ def test_decode_raises_only_on_a_callers_wrong_type() -> None:
         decode(memoryview(frame + frame)[::2], SequenceLedger())
 
 
-def test_a_maximum_past_the_length_field_is_refused_at_import(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The import-time guard on the maximum, calibrated on both arms.
-
-    The module's own source runs clean, and the same source with the maximum
-    planted at 2**32, one past what the four-byte field can declare, raises
-    before anything is defined. Run from the source text rather than by
-    reloading the module, so the module every other test holds is untouched.
-    """
-    spec = importlib.util.find_spec("ration.frame")
-    assert spec is not None and spec.origin is not None
-    with open(spec.origin, encoding="utf-8") as handle:
-        source = handle.read()
-    stated = "MAX_BODY_LENGTH = 1_048_576"
-    assert source.count(stated) == 1, "the plant below no longer finds the constant"
-    origin = spec.origin
-
-    def run(text: str) -> None:
-        # A module of its own name, registered while it runs, because
-        # `dataclass` looks its defining module up in `sys.modules`.
-        module = types.ModuleType("planted_frame")
-        monkeypatch.setitem(sys.modules, module.__name__, module)
-        exec(compile(text, origin, "exec"), module.__dict__)
-
-    run(source)
-    for planted in ("MAX_BODY_LENGTH = 1 << 32", "MAX_BODY_LENGTH = 0"):
-        with pytest.raises(ValueError, match="32-bit length field"):
-            run(source.replace(stated, planted))
-
-
 @pytest.mark.parametrize(
     ("epoch", "count"),
     [(-1, 0), (0, -1), (1 << 32, 0), (0, 1 << 32)],
@@ -436,7 +402,3 @@ def test_the_frame_version_is_one_and_the_registry_names_five_kinds() -> None:
         4: "explore-cluster",
         5: "role-claim",
     }
-    # A name is what a payload decoder switches on, so two codes sharing one is
-    # the same ambiguity as two codes sharing a meaning. The literal above
-    # would not catch it on its own if a row were both added and renamed.
-    assert len(set(KINDS.values())) == len(KINDS)

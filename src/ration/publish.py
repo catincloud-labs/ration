@@ -96,6 +96,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ration.addressing import ROLE_PREFIX
 from ration.contract import (
     ABSENT,
     Ambiguous,
@@ -111,6 +112,13 @@ __all__ = ["TOPIC_PREFIX", "UNPUBLISHED", "Publication", "current", "key_for", "
 #: Namespaced for the reason `ROLE_PREFIX` is: two consumers agreeing on a key
 #: by accident is a bug that presents as an unrelated service losing its state.
 TOPIC_PREFIX = "topic/"
+
+# The namespaces exist so a topic's key and a role's key never meet in the one
+# store they share. That holds only while neither prefix starts the other: a
+# topic whose key began with `ROLE_PREFIX` would be read back as a role. So the
+# two are checked at import, with a `raise` that `python -O` cannot strip.
+if TOPIC_PREFIX.startswith(ROLE_PREFIX) or ROLE_PREFIX.startswith(TOPIC_PREFIX):
+    raise ValueError("the topic and role key prefixes must not nest")
 
 #: The generation of a topic never published. Absence is a version -- the
 #: contract's `ABSENT` -- which is what makes the first publication an ordinary

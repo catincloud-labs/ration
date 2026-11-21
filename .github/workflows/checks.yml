@@ -447,9 +447,14 @@ jobs:
   # The coding standard, the Power of 10, read per class against the tree the
   # pull request proposes. `src` is class A -- a failure there reaches the
   # lease this package exists to hold -- so it is read at cyclomatic ceiling 10
-  # with strict typing: no recursion, no `while True`, no `global`, no blind
-  # `except`, every function annotated. `tests/` and `scripts/` are class C at
-  # ceiling 15 without being named. The interpreter is the floor of
+  # and 40 statements with strict typing: no recursion, no `while True`, no
+  # `global` or `nonlocal`, no mutable default, no blind `except`, no computed
+  # import, every function annotated. Its rules 3 and 5 are read by the suite,
+  # and `power-of-ten.json` at the root names the check that reads each. The
+  # vendored guards under `scripts/` are class B, at ceiling 15 and 60
+  # statements, and their `test_*.py` self-tests are test paths, class C.
+  # `tests/` is class C at ceiling 15 without being named. The
+  # interpreter is the floor of
   # `requires-python`. The tool versions are written once, in
   # `scripts/power_of_ten_requirements.txt`, which Dependabot's `pip` entry
   # moves. A deviation is a `noqa` or `type: ignore[code]` naming the rule with
@@ -480,4 +485,4 @@ jobs:
       - name: Every class reads clean at its ceiling, and the baseline did not grow
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: python scripts/check_power_of_ten.py --tree . --class-a src --base-sha "$BASE_SHA"
+        run: python scripts/check_power_of_ten.py --tree . --class-a src --class-b scripts --base-sha "$BASE_SHA"
