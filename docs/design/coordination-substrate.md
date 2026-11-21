@@ -250,12 +250,12 @@ purpose under the same strict xfail:
 
 | Guarantee | Shown by | Violators it rejects |
 | --- | --- | --- |
-| The bytes present honour the declared length, exactly: a short header, a short body and trailing bytes are each refused | `src/ration/conformance/test_frame_length.py::test_the_bytes_present_must_honour_the_declared_length` | `unchecked-length`, `ignores-trailing` |
+| The bytes present honour the declared length, exactly: a short header, a short body and trailing bytes are each refused; and neither passes the maximum, 1 MiB of body, refused as `oversized` from a header alone or from the input's length | `src/ration/conformance/test_frame_length.py::test_the_bytes_present_must_honour_the_declared_length` | `unchecked-length`, `ignores-trailing`, `no-ceiling` |
 | A flipped bit anywhere, header or body, is refused as corruption: the CRC-32 covers the header as well as the body | `src/ration/conformance/test_frame_integrity.py::test_a_flipped_bit_anywhere_is_refused_as_corruption` | `unchecked-crc`, `body-only-crc` |
 | An unknown frame version is refused as that, before its layout is assumed | `src/ration/conformance/test_frame_version.py::test_an_unknown_version_is_refused_before_its_layout_is_assumed` | `unchecked-version`, `crc-before-version` |
 | A kind the registry does not name is refused | `src/ration/conformance/test_frame_kind.py::test_an_unregistered_kind_is_refused` | `unchecked-kind` |
 | A receiver accepts exactly the next sequence, or a higher epoch at count zero; a duplicate, a gap, a replay and an older epoch are refused, and the ledger moves on acceptance only | `src/ration/conformance/test_frame_sequence.py::test_exactly_the_next_sequence_or_a_fresh_epoch_at_zero` | `unchecked-sequence`, `counter-only`, `sequences-before-checking` |
-| Only a frame's one canonical text is read; any other string is refused as `malformed-text` before a frame check runs, and a fault in the bytes under a well-formed text is refused by the frame | `src/ration/conformance/test_frame_text.py::test_only_the_canonical_text_is_read_as_a_frame` | `lenient-text`, `library-strict`, `skips-text-decode`, `accepts-non-canonical`, `drops-dangling-character`, `collapses-layers` |
+| Only a frame's one canonical text is read; a string longer than the largest frame's text is refused as `oversized` on its length, any other as `malformed-text`, both before a frame check runs, and a fault in the bytes under a well-formed text is refused by the frame | `src/ration/conformance/test_frame_text.py::test_only_the_canonical_text_is_read_as_a_frame` | `lenient-text`, `library-strict`, `skips-text-decode`, `accepts-non-canonical`, `drops-dangling-character`, `collapses-layers`, `walks-before-bounding` |
 
 And against the reference codec alone:
 
@@ -266,6 +266,10 @@ And against the reference codec alone:
 | Encoding raises on a sender's own mistake | `tests/test_frame.py::test_encode_raises_on_a_senders_own_mistake` |
 | The frame's refusals cannot be mistaken for a consumer envelope's | `tests/test_frame.py::test_the_frames_refusals_cannot_be_mistaken_for_the_envelopes` |
 | An epoch whose count is exhausted refuses to wrap | `tests/test_frame.py::test_an_exhausted_epoch_refuses_to_wrap` |
+| The maximum is 1 MiB of body for every kind, a body of exactly that length round trips, and the largest frame's text, 1,398,126 characters, is the longest read | `tests/test_frame.py::test_the_maximum_is_one_mebibyte_of_body_for_every_kind`, `tests/test_frame.py::test_the_largest_frames_text_is_the_longest_text_read` |
+| An input past the maximum is refused before the reader allocates for it, whatever the buffer's item size | `tests/test_frame.py::test_an_input_past_the_maximum_is_refused_before_it_is_copied` |
+| Decoding reads any contiguous buffer as its bytes, and raises only on something that is not one | `tests/test_frame.py::test_decode_reads_any_contiguous_buffer_as_its_bytes`, `tests/test_frame.py::test_decode_raises_only_on_a_callers_wrong_type` |
+| A maximum that does not fit the four-byte length field is refused at import | `tests/test_frame.py::test_a_maximum_past_the_length_field_is_refused_at_import` |
 
 **What it refuses, and what that costs.** A sender identity in the header: which
 sender a frame belongs to is the receiver's knowledge, and a field the frame

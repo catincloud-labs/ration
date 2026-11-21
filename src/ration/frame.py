@@ -44,6 +44,23 @@ Big-endian throughout, because a header is read by whichever host it lands
 on. The body is the consumer's own envelope, and this module never looks
 inside it.
 
+## The maximum, and why one number for every kind
+
+The length field is four bytes, so a header can declare up to 4 GiB of body,
+and a reader that took the field at its word would buffer whatever it was
+told. :data:`MAX_BODY_LENGTH` is the most body any receiver must accept: 1 MiB
+(1,048,576 bytes), for every kind.
+
+- **It starts generous**, because a frame carries a request or a fingerprint,
+  never data. Lowering it later breaks senders, and raising it needs every
+  receiver moved first.
+- **A receiver may still cap a kind tighter**, on its own side, once the frame
+  is handed back. The number here is the most any receiver must accept, not
+  the least it may.
+- **A sender is held to the same number.** :meth:`FrameCodec.encode` raises on
+  a longer body, so no sender builds a frame a receiver may refuse for its
+  size.
+
 ## The integrity check is the frame's, not the payload's
 
 This is the reason the CRC covers the **header**. A digest a consumer's
@@ -64,20 +81,37 @@ A later frame version leans on it:
    moves the CRC must refuse as `unknown-frame-version`, not as a CRC failure
    -- so a flipped version byte is indistinguishable from a v2 frame, and
    both refuse here. That is accepted: neither reaches a payload decoder.
-3. **Enough bytes for the declared body**, or `truncated`. The reader cannot
+3. **No more than the maximum**, or `oversized`: a declared body longer than
+   :data:`MAX_BODY_LENGTH`, or more bytes in all than a header and a body of
+   that length. After the version, because the length field is a length only
+   once the version says the layout is v1's. Before anything touches the
+   body, because a refusal that comes after the copy has already paid for
+   it: the header is read in place, the input is measured by its length
+   alone, and only then is it copied.
+   - **Both readings are one observation**, more than any receiver must
+     accept, so they carry one control, with the reason saying which was
+     seen, as `truncated` does below.
+   - **An input past the maximum is refused here, not as `trailing-bytes`
+     below.** That later refusal reads a whole frame with garbage after it,
+     which needs the CRC to have passed first, and no CRC is computed over
+     an input the reader has refused to read.
+   - **A header alone is enough to decide it.** A frame declaring more than
+     the maximum is refused `oversized` before `truncated` is asked, so a
+     receiver that has read eighteen bytes learns not to read the rest.
+4. **Enough bytes for the declared body**, or `truncated`. The reader cannot
    tell a length that lies upward from a body cut short; both are the same
    observation and carry the same control, with the reason saying which
    was seen.
-4. **CRC-32** over the header's first fourteen bytes and the declared body,
+5. **CRC-32** over the header's first fourteen bytes and the declared body,
    or `crc-mismatch`. Before the trailing-bytes check on purpose: a length
    corrupted *downward* leaves the declared span failing its CRC, and that
    frame was corrupted, not padded.
-5. **No bytes beyond the declared body**, or `trailing-bytes`. HTTP hands
+6. **No bytes beyond the declared body**, or `trailing-bytes`. HTTP hands
    the reader one request's body, so anything past the frame is not a
    second frame; it is garbage, and a reader that ignored it would decode a
    frame no sender built.
-6. **Kind**, or `unknown-payload-kind`.
-7. **Sequence**, against the sender's ledger -- `sequence-duplicate`,
+7. **Kind**, or `unknown-payload-kind`.
+8. **Sequence**, against the sender's ledger -- `sequence-duplicate`,
    `sequence-replayed` or `sequence-gap`.
 
 Only then is the frame handed back, and only then does the ledger move.
@@ -85,19 +119,20 @@ Only then is the frame handed back, and only then does the ledger move.
 **This order is not the frame property numbering.** The conformance suite
 cites *Frame property 1* to *6*, numbered in `README.md`'s frame table, and a
 property is what a reader must refuse rather than the step that refuses it.
-Against the list above: frame property 1, the declared length, is checks 1, 3
-and 5; frame property 2, a flipped bit, is check 4; frame property 3, an
-unknown version, is check 2; frame property 4, an unregistered kind, is check
-6; frame property 5, the sequence, is check 7; and frame property 6, the
-canonical text, belongs to the text form below, whose refusal comes before any
-of the seven, which then run on the bytes the text holds unchanged.
+Against the list above: frame property 1, the declared length and the
+maximum, is checks 1, 3, 4 and 6; frame property 2, a flipped bit, is check 5;
+frame property 3, an unknown version, is check 2; frame property 4, an
+unregistered kind, is check 7; frame property 5, the sequence, is check 8; and
+frame property 6, the canonical text, belongs to the text form below, whose
+refusals come before any of the eight, which then run on the bytes the text
+holds unchanged.
 
 ## The text form, for a frame that travels in a request header
 
 A route that takes no HTTP body can still carry a frame, in a request header.
 A header value is text, so the frame's bytes travel under one text form, and
 that form is this module's: the frame inside it is an unchanged v1 frame, and
-the seven checks above run on its bytes exactly as they run on a body's. Which
+the eight checks above run on its bytes exactly as they run on a body's. Which
 header carries it is the consumer's transport choice, declared on its side,
 and this module does not name one.
 
@@ -115,10 +150,17 @@ and this module does not name one.
   not zero. The last is why the check is a round trip rather than a character
   scan: the standard library's own strict settings read such a text as the
   same bytes as the canonical one, so two texts would decode to one frame.
-- **Its refusal is `malformed-text`,** and it comes before every frame check,
-  since until the text is read there are no frame bytes to check. A fault in
-  the text is refused as the text's; a fault in the bytes the text carries is
-  refused by the check that owns it, so a log record says which layer failed.
+- **The text has a maximum too, and it is read first.** The largest frame is
+  a header and a body of :data:`MAX_BODY_LENGTH`, and its text is 1,398,126
+  characters. A longer string is refused as `oversized` on its length alone,
+  before a character of it is walked: what was seen is its size, not its
+  spelling, and a reader that walked it first would pay for a string it was
+  always going to refuse.
+- **Every other refusal of the text is `malformed-text`,** and the text's
+  refusals come before every frame check, since until the text is read there
+  are no frame bytes to check. A fault in the text is refused as the text's; a
+  fault in the bytes the text carries is refused by the check that owns it, so
+  a log record says which layer failed.
 
 The leniency is not hypothetical. Python's default `base64.b64decode` drops a
 character outside its alphabet silently and returns the bytes the text held
@@ -185,7 +227,9 @@ own restarts is the consumer's decision, not this module's.
   and so is a header's text. Every way they can be wrong is a
   :class:`FrameRefusal` with a control from the closed set below. Encode is
   the other posture: a sender's own arguments are its own data, and a wrong
-  one raises.
+  one raises. So does a decode handed something that is not a contiguous
+  buffer at all, which is the caller's mistake rather than bytes off a
+  network.
 """
 
 from __future__ import annotations
@@ -193,6 +237,7 @@ from __future__ import annotations
 import base64
 import struct
 import zlib
+from collections.abc import Buffer
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -210,6 +255,8 @@ __all__ = [
     "HEADER_SIZE",
     "KINDS",
     "MALFORMED_TEXT",
+    "MAX_BODY_LENGTH",
+    "OVERSIZED",
     "ROLE_CLAIM",
     "SEQUENCE_DUPLICATE",
     "SEQUENCE_GAP",
@@ -236,6 +283,27 @@ _HEADER = struct.Struct("!BBQII")
 HEADER_SIZE = _HEADER.size
 #: The span the CRC covers within the header: everything before the CRC itself.
 _CHECKED_HEADER = HEADER_SIZE - 4
+#: One 32-bit word: each half of the sequence, and the body length field.
+_WORD = 1 << 32
+
+#: The most body any receiver must accept, for every kind: 1 MiB. The module
+#: docstring says why this number, and why one number for all kinds.
+MAX_BODY_LENGTH = 1_048_576
+
+# The length field is one word. A maximum that does not fit it is a maximum no
+# header can declare, so every frame up to the field's own limit would pass a
+# bound that bounds nothing; it is refused at import. A `raise`, not an
+# `assert`, for the reason the kind check below gives.
+if not 0 < MAX_BODY_LENGTH < _WORD:
+    raise ValueError(
+        "the maximum body length must fit the header's 32-bit length field "
+        "and not be zero"
+    )
+
+#: The text of the largest frame, in characters: base64url without padding is
+#: ceil(4n / 3) characters for n bytes. A longer string holds more than any
+#: frame a receiver must accept.
+_MAX_TEXT_LENGTH = (4 * (HEADER_SIZE + MAX_BODY_LENGTH) + 2) // 3
 
 #: The payload kinds that have been assigned codes. Closed: a reader refuses a
 #: code that is not here, and a code means one body shape everywhere the frame
@@ -324,10 +392,15 @@ SEQUENCE_GAP = "sequence-gap"
 # The ninth, and the only one about text rather than bytes: a string that is
 # not the canonical text form of any frame. See the module docstring.
 MALFORMED_TEXT = "malformed-text"
+# The tenth: more than any receiver must accept -- a declared body past the
+# maximum, more bytes than the largest frame holds, or a text longer than the
+# largest frame's. See the module docstring.
+OVERSIZED = "oversized"
 
 CONTROLS = frozenset(
     {
         MALFORMED_TEXT,
+        OVERSIZED,
         TRUNCATED,
         UNKNOWN_FRAME_VERSION,
         CRC_MISMATCH,
@@ -338,8 +411,6 @@ CONTROLS = frozenset(
         SEQUENCE_GAP,
     }
 )
-
-_WORD = 1 << 32
 
 #: The text form's alphabet: base64url, RFC 4648 section 5, with no `=`.
 _TEXT_ALPHABET = frozenset(
@@ -484,8 +555,11 @@ class FrameCodec:
         if not isinstance(body, (bytes, bytearray, memoryview)):
             raise TypeError("body must be bytes")
         body = bytes(body)
-        if len(body) >= _WORD:
-            raise ValueError("body length does not fit the header's 32-bit length")
+        if len(body) > MAX_BODY_LENGTH:
+            raise ValueError(
+                f"a body of {len(body)} bytes is past the frame's maximum of "
+                f"{MAX_BODY_LENGTH}"
+            )
         checked = _HEADER.pack(FRAME_VERSION, kind, sequence.value, len(body), 0)[
             :_CHECKED_HEADER
         ]
@@ -517,7 +591,14 @@ class FrameCodec:
         return self.decode(data, ledger)
 
     def from_text(self, text: str) -> bytes | FrameRefusal:
-        """The bytes the text form holds, or `malformed-text` for any other string."""
+        """The bytes the text form holds, or a refusal for any other string.
+
+        `oversized` for a string longer than the largest frame's text, read
+        from its length before any character is; `malformed-text` for the rest.
+        """
+        refused = self.text_within_maximum(text)
+        if refused is not None:
+            return refused
         refused = self.text_well_formed(text)
         if refused is not None:
             return refused
@@ -528,6 +609,15 @@ class FrameCodec:
         if refused is not None:
             return refused
         return data
+
+    def text_within_maximum(self, text: str) -> FrameRefusal | None:
+        if len(text) > _MAX_TEXT_LENGTH:
+            return FrameRefusal(
+                OVERSIZED,
+                f"a text of {len(text)} characters is past the "
+                f"{_MAX_TEXT_LENGTH} of the largest frame's text",
+            )
+        return None
 
     def text_well_formed(self, text: str) -> FrameRefusal | None:
         for position, character in enumerate(text):
@@ -556,16 +646,30 @@ class FrameCodec:
 
     # -- reading, in the stated order ----------------------------------------
 
-    def decode(self, data: bytes, ledger: SequenceLedger) -> Frame | FrameRefusal:
-        """Bytes to frame, or a typed refusal -- never an exception."""
-        data = bytes(data)
-        refused = self.header_present(data)
+    def decode(self, data: Buffer, ledger: SequenceLedger) -> Frame | FrameRefusal:
+        """Bytes to frame, or a typed refusal -- never an exception on bytes.
+
+        ``data`` is read as the bytes it holds, through a flat view: ``bytes``,
+        ``bytearray`` or a contiguous ``memoryview`` of any format. The header
+        is read from the view and the input measured by the view's length in
+        bytes, so ``data`` is copied only once the maximum has bounded it: an
+        input past the maximum is refused before a byte of its body is copied
+        or read. Anything that is not a contiguous buffer is the caller's own
+        mistake rather than bytes off a network, and raises ``TypeError``, as
+        :meth:`decode_text` does on a ``text`` that is not a ``str``.
+        """
+        view = memoryview(data).cast("B")
+        refused = self.header_present(view)
         if refused is not None:
             return refused
-        version, kind, value, length, crc = _HEADER.unpack_from(data)
+        version, kind, value, length, crc = _HEADER.unpack_from(view)
         refused = self.version_known(version)
         if refused is not None:
             return refused
+        refused = self.within_maximum(length, len(view))
+        if refused is not None:
+            return refused
+        data = bytes(view)
         present = len(data) - HEADER_SIZE
         refused = self.body_present(length, present)
         if refused is not None:
@@ -587,7 +691,7 @@ class FrameCodec:
         ledger.advance(sequence)
         return Frame(kind=kind, sequence=sequence, body=body)
 
-    def header_present(self, data: bytes) -> FrameRefusal | None:
+    def header_present(self, data: memoryview) -> FrameRefusal | None:
         if len(data) < HEADER_SIZE:
             return FrameRefusal(
                 TRUNCATED,
@@ -601,6 +705,22 @@ class FrameCodec:
             return FrameRefusal(
                 UNKNOWN_FRAME_VERSION,
                 f"frame version {version} is not the known version {FRAME_VERSION}",
+            )
+        return None
+
+    def within_maximum(self, length: int, size: int) -> FrameRefusal | None:
+        """The declared body and the whole input, each against the maximum, as one step."""
+        if length > MAX_BODY_LENGTH:
+            return FrameRefusal(
+                OVERSIZED,
+                f"the header declares {length} body bytes, past the maximum "
+                f"of {MAX_BODY_LENGTH}",
+            )
+        if size > HEADER_SIZE + MAX_BODY_LENGTH:
+            return FrameRefusal(
+                OVERSIZED,
+                f"{size} bytes arrived, past the {HEADER_SIZE + MAX_BODY_LENGTH} "
+                "of the largest frame",
             )
         return None
 
@@ -660,7 +780,7 @@ def encode(kind: int, sequence: Sequence, body: bytes) -> bytes:
     return _V1.encode(kind, sequence, body)
 
 
-def decode(data: bytes, ledger: SequenceLedger) -> Frame | FrameRefusal:
+def decode(data: Buffer, ledger: SequenceLedger) -> Frame | FrameRefusal:
     """Bytes to a checked frame, or a typed refusal. See :meth:`FrameCodec.decode`."""
     return _V1.decode(data, ledger)
 

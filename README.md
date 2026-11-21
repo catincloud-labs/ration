@@ -222,14 +222,33 @@ frame of a version this reader does not speak refuses as exactly that, before
 anything assumes v1's layout. The layout table and the order are in the module
 docstring, once.
 
+**A frame states its maximum: 1 MiB of body (1,048,576 bytes), for every
+kind.** It is the most any receiver must accept. The length field is four
+bytes, so without it a header could declare 4 GiB and a reader would buffer
+what it was told. A frame carries a request or a fingerprint, never data, so
+the number starts generous: lowering it later breaks senders, and raising it
+needs every receiver moved first. A receiver may still cap a kind tighter on
+its own side, and `encode` raises on a longer body. The reader refuses past
+it as `oversized`, the tenth control, after the version check, since the
+field is a length only once the version is known, and before anything
+touches the body: the header is read in place, the whole input is bounded by
+its length, and only then is it copied. A header alone that declares too much
+is refused, so a receiver need not read the body. A declared body past the
+maximum and more bytes than the largest frame holds are one observation and
+carry one control. The second is not left for `trailing-bytes`, which reads a
+whole frame with garbage after it, and can say so only after the input is
+copied whole and the CRC has passed over the declared span.
+
 **A frame can also travel as text**, in a request header, for a route that
-takes no HTTP body. The frame inside is an unchanged v1 frame, and its seven
+takes no HTTP body. The frame inside is an unchanged v1 frame, and its eight
 checks run on its bytes as they would on a body's; only the carrier differs.
 The text form is base64url (RFC 4648, section 5) with no padding, so a frame
 of `n` bytes is `ceil(4n / 3)` characters and the header-only frame is 24. The
 decode is strict, and strict means canonical: a frame has exactly one text,
-the one `encode_text` writes, and any other string is refused as
-`malformed-text`, the ninth control, before any frame check runs. Which header
+the one `encode_text` writes. A string longer than the largest frame's text,
+1,398,126 characters, is refused as `oversized` on its length, before a
+character of it is read, and any other string as `malformed-text`, the ninth
+control; both come before any frame check runs. Which header
 carries the text is the consumer's transport choice and is named on its side,
 not here.
 
@@ -267,16 +286,16 @@ check**, one per check, each the shape a shortcut takes:
 
 | Frame property | What it fixes | Hostile cases | The codec that must fail it |
 | --- | --- | --- | --- |
-| 1 | The bytes present honour the declared length, exactly | truncated mid-header, truncated mid-body, length larger than present, length smaller than present | `unchecked-length` - trusts the transport, so a short header is an exception and a short body is misnamed; `ignores-trailing` - takes the declared body and discards the rest |
+| 1 | The bytes present honour the declared length, exactly, and neither passes the maximum | truncated mid-header, truncated mid-body, length larger than present, length smaller than present, a body of exactly the maximum (accepted), one byte past it, a header alone declaring past it, an honest header followed by more bytes than the largest frame holds | `unchecked-length` - trusts the transport, so a short header is an exception and a short body is misnamed; `ignores-trailing` - takes the declared body and discards the rest; `no-ceiling` - takes the four-byte field's own limit as the frame's, so a frame past the maximum is accepted and a header declaring one is told to read on |
 | 2 | A flipped bit anywhere is refused as corruption | a bit flipped in the body, in the sequence, in the epoch, in the kind byte | `unchecked-crc` - carries the CRC and never compares it; `body-only-crc` - a CRC over the body alone, which leaves the header bare |
-| 3 | An unknown version is refused as that, before its layout is assumed | version ahead of the reader, version ahead with the CRC moved, version zero | `unchecked-version`; `crc-before-version` - every check present, only the order wrong |
+| 3 | An unknown version is refused as that, before its layout is assumed | version ahead of the reader, version ahead with the CRC moved, a header alone of a version ahead whose length slot is past v1's maximum, version zero | `unchecked-version`; `crc-before-version` - every check present, only the order wrong |
 | 4 | An unregistered kind is refused | kind unknown to the registry, kind zero | `unchecked-kind` |
 | 5 | Exactly the next sequence, or a fresh epoch at zero | duplicated, skipped, behind, restart at a fresh epoch, an older epoch replayed, a new epoch not at zero, retry of a refused frame | `unchecked-sequence`; `counter-only` - 32 bits and no restart rule, so it turns the honest restart away; `sequences-before-checking` - the right rule, applied before the CRC has spoken |
-| 6 | Only a frame's canonical text is read, and any other string is refused as text | a character outside the alphabet, whitespace, a character outside ASCII, padding, the standard alphabet's `+` and `/`, a length one past a multiple of four, a second text of the same frame at every unused bit of both length classes; and a well-formed text of bad bytes, refused by the frame rather than the text | `lenient-text` - the standard library's default decode, which drops what it does not recognise; `library-strict` - its strict base64url setting, which still takes padding and both alphabets; `skips-text-decode` - hands the header to the frame reader undecoded; `accepts-non-canonical` - every character checked against base64url and the round trip skipped; `drops-dangling-character` - reads a dangling character as nothing, as Node's `Buffer` does; `collapses-layers` - answers the frame's refusals as the text's |
+| 6 | Only a frame's canonical text is read, and any other string is refused as text | a character outside the alphabet, whitespace, a character outside ASCII, padding, the standard alphabet's `+` and `/`, a length one past a multiple of four, a second text of the same frame at every unused bit of both length classes; a string one character longer than the largest frame's text, ending outside the alphabet, refused on its length as `oversized`; and a well-formed text of bad bytes, refused by the frame rather than the text | `lenient-text` - the standard library's default decode, which drops what it does not recognise; `library-strict` - its strict base64url setting, which still takes padding and both alphabets; `skips-text-decode` - hands the header to the frame reader undecoded; `accepts-non-canonical` - every character checked against base64url and the round trip skipped; `drops-dangling-character` - reads a dangling character as nothing, as Node's `Buffer` does; `collapses-layers` - answers the frame's refusals as the text's; `walks-before-bounding` - reads every character of a string before it asks the string's length |
 
 The rows are **Frame property 1 to 6**, in this order, and that is the
 number each module in `src/ration/conformance/test_frame_*.py` cites. It is not
-the order in which `src/ration/frame.py` runs its seven checks, which is a
+the order in which `src/ration/frame.py` runs its eight checks, which is a
 different list and says so.
 
 One hostile case is separated by no registered reader: a character outside

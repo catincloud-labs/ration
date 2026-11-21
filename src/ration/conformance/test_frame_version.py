@@ -5,8 +5,11 @@ it a property rather than a comparison: the version is checked **before**
 anything that assumes this version's layout. A v2 frame that moves the CRC
 must refuse as a version this reader does not speak, not as a corrupted v1
 frame -- the first refusal tells an operator to upgrade, the second tells
-them to look at the wire. Violated by `unchecked-version` and by
-`crc-before-version`, which has every check and only the order wrong.
+them to look at the wire. The maximum is one of the things that assume
+it: a v2 header's length slot is not a v1 length until the version says so,
+so a later version is refused as that even where the slot holds more than
+v1's maximum. Violated by `unchecked-version` and by `crc-before-version`,
+which has every check and only the order wrong.
 
 Measures: README.md, Frame property 3
 """
@@ -15,7 +18,15 @@ from __future__ import annotations
 
 import pytest
 
-from ration.frame import FRAME_VERSION, UNKNOWN_FRAME_VERSION, Frame, FrameRefusal, Sequence
+from ration.frame import (
+    FRAME_VERSION,
+    HEADER_SIZE,
+    MAX_BODY_LENGTH,
+    UNKNOWN_FRAME_VERSION,
+    Frame,
+    FrameRefusal,
+    Sequence,
+)
 from ration.conformance.support.codecs import CodecUnderTest
 
 
@@ -44,6 +55,18 @@ def test_an_unknown_version_is_refused_before_its_layout_is_assumed(
     assert refused.control == UNKNOWN_FRAME_VERSION, (
         "a frame of a later version was refused for failing THIS version's "
         f"integrity check, so the one refusal that says 'upgrade' cannot be produced: {refused}"
+    )
+    assert isinstance(codec.decode(healthy), Frame)
+
+    # A version ahead of the reader whose length slot holds more than v1's
+    # maximum, as a header alone. The slot is a length only under v1's
+    # layout, so the version is asked first, and the maximum not at all.
+    ahead = codec.forge(healthy, version=FRAME_VERSION + 1, length=MAX_BODY_LENGTH + 1)
+    refused = codec.decode(ahead[:HEADER_SIZE])
+    assert isinstance(refused, FrameRefusal), refused
+    assert refused.control == UNKNOWN_FRAME_VERSION, (
+        "a later version's header was refused for what v1 would read in its "
+        f"length slot, so the refusal that says 'upgrade' never came: {refused}"
     )
     assert isinstance(codec.decode(healthy), Frame)
 

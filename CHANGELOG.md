@@ -148,6 +148,28 @@ description the README at this entry's commit would become.
   `tests/support/<module>.py` as `src/ration/conformance/support/<module>.py`,
   and `tests/<module>.py` as `src/ration/conformance/<module>.py`.
 
+### The frame, and the suite of frames built wrong on purpose
+
+- **"The frame inside is an unchanged v1 frame, and its seven checks run on
+  its bytes as they would on a body's"** and **"the order in which
+  `src/ration/frame.py` runs its seven checks"**. The first from `bdc73ff`
+  (2026-10-30T18:13:39Z), the second from `7a2af57` (2026-11-09T15:56:32Z).
+  Read dead 2026-11-21 against the tree this entry's commit leaves, where
+  `src/ration/frame.py` states a maximum of 1 MiB of body, refuses past it as
+  `oversized`, the tenth control, as its third check of eight, and refuses a
+  text longer than the largest frame's as `oversized` before it reads a
+  character (#36). Both now say eight.
+- **"a frame has exactly one text, the one `encode_text` writes, and any other
+  string is refused as `malformed-text`, the ninth control, before any frame
+  check runs."** From `bdc73ff` (2026-10-30T18:13:39Z). Read dead 2026-11-21
+  against the tree this entry's commit leaves, where `src/ration/frame.py`
+  states a maximum of 1 MiB of body, refuses past it as `oversized`, the tenth
+  control, as its third check of eight, and refuses a text longer than the
+  largest frame's as `oversized` before it reads a character (#36). The
+  sentence now names the longest text, 1,398,126 characters, says a longer
+  string is refused as `oversized` and any other as `malformed-text`, and that
+  both come before any frame check.
+
 ## AGENTS.md
 
 ### Merging, the cold review and the record
@@ -417,6 +439,20 @@ the page at `e73cf2a` (#18).
   sentence keeps its words and gains a clause naming the plugin and the
   README's *Running the suite against your own store*.
 
+### The frame's suite
+
+- **"Only a frame's one canonical text is read; any other string is refused as
+  `malformed-text` before a frame check runs"**. A cell of the frame's table
+  under *The frame: a checked carrier, with no state of its own*, from
+  `634c5cf` (2026-11-06T22:59:16Z). Read dead 2026-11-21 against the tree this
+  entry's commit leaves, where `src/ration/frame.py` states a maximum of 1 MiB
+  of body, refuses past it as `oversized`, the tenth control, as its third
+  check of eight, and refuses a text longer than the largest frame's as
+  `oversized` before it reads a character (#36). The cell now names
+  `oversized` for a string longer than the largest frame's text. A list that
+  only gained a member, such as a row's violators, still states what it did
+  and is not recorded here.
+
 ## CHANGELOG.md
 
 ### The header
@@ -615,3 +651,48 @@ cited a moved path are listed beside the docstrings.
   `ration.conformance`, under `src/ration/conformance/`, and this repository's
   registry of stores is `tests/cases.py` (#20). Each path now reads as it
   moved, by the rule in the README's *Paths to the suite* entry above.
+
+### The frame's maximum
+
+- **"frame property 1, the declared length, is checks 1, 3 and 5; frame
+  property 2, a flipped bit, is check 4; frame property 3, an unknown version,
+  is check 2; frame property 4, an unregistered kind, is check 6; frame
+  property 5, the sequence, is check 7"** with **"whose refusal comes before
+  any of the seven"**, in the docstring of `src/ration/frame.py`, from
+  `7a2af57` (2026-11-09T15:56:32Z), and the numbering of its list of checks
+  from 3 on, from `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-21
+  against the tree this entry's commit leaves, where `src/ration/frame.py`
+  states a maximum of 1 MiB of body, refuses past it as `oversized`, the tenth
+  control, as its third check of eight, and refuses a text longer than the
+  largest frame's as `oversized` before it reads a character (#36). The
+  maximum is check 3, the checks after it moved down one, and the paragraph
+  maps frame property 1 to checks 1, 3, 4 and 6.
+- **"the seven checks above run on its bytes exactly as they run on a
+  body's"**, **"Its refusal is `malformed-text`, and it comes before every
+  frame check"** and **"The bytes the text form holds, or `malformed-text` for
+  any other string."** The docstring of `src/ration/frame.py` and of
+  `FrameCodec.from_text`, all from `bdc73ff` (2026-10-30T18:13:39Z). Read dead
+  2026-11-21 against the tree this entry's commit leaves, where
+  `src/ration/frame.py` states a maximum of 1 MiB of body, refuses past it as
+  `oversized`, the tenth control, as its third check of eight, and refuses a
+  text longer than the largest frame's as `oversized` before it reads a
+  character (#36). They now say eight, name `oversized` for an over-long text,
+  read first, and `malformed-text` for every other refusal of the text.
+- **"The text form has six of its own"**, in the docstring of
+  `src/ration/conformance/frame_violators.py`, from `ad14ac6`
+  (2026-10-30T18:28:26Z). Read dead 2026-11-21 against the tree this entry's
+  commit leaves, where `src/ration/frame.py` states a maximum of 1 MiB of
+  body, refuses past it as `oversized`, the tenth control, as its third check
+  of eight, and refuses a text longer than the largest frame's as `oversized`
+  before it reads a character (#36). It now says seven, the seventh being
+  `walks-before-bounding`, beside `no-ceiling` for the length check.
+- **"A reader of it must refuse every string that is not the text form as
+  `malformed-text`, before any frame check"**, in the docstring of
+  `src/ration/conformance/test_frame_text.py`, from `bdc73ff`
+  (2026-10-30T18:13:39Z). Read dead 2026-11-21 against the tree this entry's
+  commit leaves, where `src/ration/frame.py` states a maximum of 1 MiB of
+  body, refuses past it as `oversized`, the tenth control, as its third check
+  of eight, and refuses a text longer than the largest frame's as `oversized`
+  before it reads a character (#36). It now says a string longer than the
+  largest frame's text is refused as `oversized`, and every other as
+  `malformed-text`.

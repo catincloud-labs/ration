@@ -11,9 +11,14 @@ pinned as an assertion rather than left to the log reader.
 from __future__ import annotations
 
 import base64
+import importlib.util
 import random
 import string
+import sys
+import tracemalloc
+import types
 import zlib
+from collections.abc import Buffer
 
 import pytest
 
@@ -25,6 +30,8 @@ from ration.frame import (
     HEADER_SIZE,
     KINDS,
     MALFORMED_TEXT,
+    MAX_BODY_LENGTH,
+    OVERSIZED,
     ROLE_CLAIM,
     TRUNCATED,
     Frame,
@@ -184,6 +191,7 @@ def test_a_fresh_ledger_takes_the_first_frame_as_its_baseline() -> None:
         pytest.param(dict(kind=99), id="unregistered-kind"),
         pytest.param(dict(sequence=7), id="bare-int-for-sequence"),
         pytest.param(dict(body="text"), id="str-for-body"),
+        pytest.param(dict(body=bytes(MAX_BODY_LENGTH + 1)), id="body-past-the-maximum"),
     ],
 )
 def test_encode_raises_on_a_senders_own_mistake(bad: dict[str, object]) -> None:
@@ -191,6 +199,131 @@ def test_encode_raises_on_a_senders_own_mistake(bad: dict[str, object]) -> None:
     arguments.update(bad)
     with pytest.raises((TypeError, ValueError)):
         encode(**arguments)  # type: ignore[arg-type]
+
+
+def test_the_maximum_is_one_mebibyte_of_body_for_every_kind() -> None:
+    """The published number, and a body of exactly that length round trips under every kind."""
+    assert MAX_BODY_LENGTH == 1_048_576 == 1 << 20
+    largest = bytes(MAX_BODY_LENGTH)
+    for kind in KINDS:
+        decoded = decode(encode(kind, Sequence(1, 0), largest), SequenceLedger())
+        assert isinstance(decoded, Frame), (kind, decoded)
+        assert decoded.kind == kind and len(decoded.body) == MAX_BODY_LENGTH
+
+
+def test_the_largest_frames_text_is_the_longest_text_read() -> None:
+    """The text bound pinned by encoding, not by the formula the module computes it with.
+
+    The largest frame's text is 1,398,126 characters and is read; one
+    character more is refused as `oversized`, though that longer text is well
+    formed and would decode.
+    """
+    text = encode_text(FINGERPRINT, Sequence(1, 0), bytes(MAX_BODY_LENGTH))
+    assert len(text) == 1_398_126
+    decoded = decode_text(text, SequenceLedger())
+    assert isinstance(decoded, Frame), decoded
+    longer = text + "A"
+    assert len(longer) % 4 != 1, "the longer text must be well formed, or this decides nothing"
+    refused = decode_text(longer, SequenceLedger())
+    assert isinstance(refused, FrameRefusal) and refused.control == OVERSIZED, refused
+
+
+def peak_allocation(data: Buffer) -> int:
+    """The most memory `decode` held at once while reading `data`, in bytes.
+
+    `tracemalloc` counts every allocation the reader makes, a copy, a slice
+    or a buffer alike, so the probe does not depend on how a reader copies.
+    `data` is built before tracing starts, so it is not counted.
+    """
+    tracemalloc.start()
+    try:
+        decode(data, SequenceLedger())
+        return tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+
+
+def test_an_input_past_the_maximum_is_refused_before_it_is_copied() -> None:
+    """The reference reader bounds its input before it allocates for it.
+
+    The probe is calibrated on the other arm first: a frame of the largest
+    body is copied, and the probe sees at least that many bytes held. Then
+    each way past the maximum is refused `oversized` while the reader holds
+    less than a hundredth of that: a header declaring too much, an honest
+    header followed by more bytes than the largest frame holds, and the same
+    flood handed over as a view of eight-byte items, whose length in items is
+    an eighth of its length in bytes.
+    """
+    largest = encode(FINGERPRINT, Sequence(7, 3), bytes(MAX_BODY_LENGTH))
+    assert peak_allocation(largest) >= MAX_BODY_LENGTH, "the probe saw no copy where one is made"
+
+    healthy = encode(FINGERPRINT, Sequence(7, 3), b'{"a":1}')
+    checked = healthy[:10] + (MAX_BODY_LENGTH + 1).to_bytes(4, "big")
+    crc = zlib.crc32(checked + bytes(MAX_BODY_LENGTH + 1)).to_bytes(4, "big")
+    declares_too_much = checked + crc + bytes(MAX_BODY_LENGTH + 1)
+    flooded = healthy + bytes(MAX_BODY_LENGTH)
+    wide = bytearray(8 * (MAX_BODY_LENGTH // 4))
+    wide[: len(healthy)] = healthy
+    as_words = memoryview(wide).cast("Q")
+    assert len(as_words) * 8 > HEADER_SIZE + MAX_BODY_LENGTH > len(as_words)
+    for data in (declares_too_much, flooded, as_words):
+        refused = decode(data, SequenceLedger())
+        assert isinstance(refused, FrameRefusal) and refused.control == OVERSIZED, refused
+        assert peak_allocation(data) < MAX_BODY_LENGTH // 100, "the reader allocated for an input it refuses"
+
+
+def test_decode_reads_any_contiguous_buffer_as_its_bytes() -> None:
+    """A frame decodes the same from bytes, a bytearray and a view of any item size."""
+    body = b'{"ab":123}'
+    frame = encode(FINGERPRINT, Sequence(7, 3), body)
+    assert len(frame) % 4 == 0, "the cast below needs a whole number of four-byte items"
+    expected = Frame(kind=FINGERPRINT, sequence=Sequence(7, 3), body=body)
+    assert decode(frame, SequenceLedger()) == expected
+    assert decode(bytearray(frame), SequenceLedger()) == expected
+    assert decode(memoryview(frame), SequenceLedger()) == expected
+    words = memoryview(bytearray(frame)).cast("I")
+    assert len(words) == len(frame) // 4
+    assert decode(words, SequenceLedger()) == expected
+
+
+def test_decode_raises_only_on_a_callers_wrong_type() -> None:
+    """Something that is not a contiguous buffer is not bytes off a network."""
+    frame = encode(FINGERPRINT, Sequence(1, 0), b"")
+    with pytest.raises(TypeError):
+        decode(list(frame), SequenceLedger())  # type: ignore[arg-type]  # the wrong type is the point
+    with pytest.raises(TypeError):
+        decode(memoryview(frame + frame)[::2], SequenceLedger())
+
+
+def test_a_maximum_past_the_length_field_is_refused_at_import(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The import-time guard on the maximum, calibrated on both arms.
+
+    The module's own source runs clean, and the same source with the maximum
+    planted at 2**32, one past what the four-byte field can declare, raises
+    before anything is defined. Run from the source text rather than by
+    reloading the module, so the module every other test holds is untouched.
+    """
+    spec = importlib.util.find_spec("ration.frame")
+    assert spec is not None and spec.origin is not None
+    with open(spec.origin, encoding="utf-8") as handle:
+        source = handle.read()
+    stated = "MAX_BODY_LENGTH = 1_048_576"
+    assert source.count(stated) == 1, "the plant below no longer finds the constant"
+    origin = spec.origin
+
+    def run(text: str) -> None:
+        # A module of its own name, registered while it runs, because
+        # `dataclass` looks its defining module up in `sys.modules`.
+        module = types.ModuleType("planted_frame")
+        monkeypatch.setitem(sys.modules, module.__name__, module)
+        exec(compile(text, origin, "exec"), module.__dict__)
+
+    run(source)
+    for planted in ("MAX_BODY_LENGTH = 1 << 32", "MAX_BODY_LENGTH = 0"):
+        with pytest.raises(ValueError, match="32-bit length field"):
+            run(source.replace(stated, planted))
 
 
 @pytest.mark.parametrize(
@@ -277,7 +410,11 @@ def test_the_frames_refusals_cannot_be_mistaken_for_the_envelopes() -> None:
     # not an envelope that failed to parse, and the names keep them apart.
     assert MALFORMED_TEXT in CONTROLS
     assert MALFORMED_TEXT not in ENVELOPE_CONTROLS
-    assert len(CONTROLS) == 9
+    # The tenth: more than any receiver must accept, which no envelope
+    # decoder is ever handed the chance to say.
+    assert OVERSIZED in CONTROLS
+    assert OVERSIZED not in ENVELOPE_CONTROLS
+    assert len(CONTROLS) == 10
 
 
 def test_the_frame_version_is_one_and_the_registry_names_five_kinds() -> None:

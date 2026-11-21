@@ -1,17 +1,21 @@
 """Frame property 6: only a frame's canonical text is read, and any other string is refused as text.
 
 The form a frame takes in a request header, for a route with no HTTP body. A
-reader of it must refuse every string that is not the text form as
-`malformed-text`, before any frame check, and must hand the bytes a
-well-formed text holds to the frame's checks unchanged -- so a fault in the
-text is the text's refusal, and a fault in the bytes is the frame's. Violated
+reader of it must refuse every string that is not the text form, before any
+frame check: as `oversized` a string longer than the largest frame's text,
+on its length before a character of it is walked, and as `malformed-text`
+every other. It must hand the bytes a well-formed text holds to the frame's
+checks unchanged -- so a fault in the text is the text's refusal, and a fault
+in the bytes is the frame's. Violated
 by `lenient-text`, which reads with the standard library's defaults; by
 `library-strict`, which reads with its strict base64url setting; by
 `skips-text-decode`, which hands the header to the frame reader undecoded; by
 `accepts-non-canonical`, which checks every character against base64url and
 never the round trip; by `drops-dangling-character`, which reads a dangling
-character as nothing, as Node's `Buffer` does; and by `collapses-layers`,
-which answers the frame's refusals as the text's.
+character as nothing, as Node's `Buffer` does; by `collapses-layers`,
+which answers the frame's refusals as the text's; and by
+`walks-before-bounding`, which reads every character of a string before it
+asks how long the string is.
 
 One arm is separated by no registered reader: a character outside ASCII,
 which every reader here refuses as text because the standard library raises
@@ -37,7 +41,10 @@ import pytest
 
 from ration.frame import (
     CONTROLS,
+    HEADER_SIZE,
     MALFORMED_TEXT,
+    MAX_BODY_LENGTH,
+    OVERSIZED,
     ROLE_CLAIM,
     Frame,
     FrameRefusal,
@@ -156,6 +163,30 @@ def test_only_the_canonical_text_is_read_as_a_frame(codec: CodecUnderTest) -> No
         "a well-formed text's bytes were refused as a fault in the text, so "
         f"the frame's own refusal never reached the log: {refused}"
     )
+
+    # A string one character longer than the largest frame's text, whose
+    # last character is outside the alphabet. Its length alone refuses it,
+    # as `oversized`; a reader that walks it first finds the character and
+    # says `malformed-text`, so the control is the evidence of the order.
+    longest = -(-4 * (HEADER_SIZE + MAX_BODY_LENGTH) // 3)
+    over_long = healthy + "A" * (longest - len(healthy)) + "!"
+    assert len(over_long) == longest + 1
+    refused = codec.decode_text(over_long)
+    assert isinstance(refused, FrameRefusal), refused
+    assert refused.control == OVERSIZED, (
+        "a string longer than any frame's text was walked to its last "
+        f"character before its length was read: {refused}"
+    )
+    assert isinstance(codec.decode_text(healthy), Frame)
+
+    # The other side of the same bound: the largest frame's text, exactly
+    # that long, is read. A bound set short of it refuses a frame every
+    # receiver must accept.
+    largest = codec.healthy_text(Sequence.start(EPOCH), bytes(MAX_BODY_LENGTH))
+    assert len(largest) == longest
+    read = codec.decode_text(largest)
+    assert isinstance(read, Frame), f"the largest frame's text was refused: {read}"
+    assert len(read.body) == MAX_BODY_LENGTH
 
     accepted = codec.decode_text(healthy)
     assert isinstance(accepted, Frame), (

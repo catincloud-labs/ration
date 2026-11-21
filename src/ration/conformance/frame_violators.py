@@ -8,27 +8,34 @@ known-negative is not a bad frame, it is a **reader without the check**,
 because that is the thing the suite has to be shown rejecting.
 
 Each class removes exactly one check, and each is the shape a shortcut takes.
-"HTTP already frames the request" removes the length check. "The CRC costs a
+"HTTP already frames the request" removes the length check. "The length field
+is four bytes, so that is the limit" removes the maximum. "The CRC costs a
 pass over the body" removes the integrity check. "The header is tiny, hash the
 body" leaves the header out of the integrity check. "Requests are idempotent"
 removes the sequence check. A 32-bit counter is what a sender restart rule
-looks like when nobody wrote one. The text form has six of its own: "the
+looks like when nobody wrote one. The text form has seven of its own: "the
 library decodes base64" removes the strict read; "the library's strict flag
 is strict" keeps a strict read that is not; "the header is already bytes"
 removes the decode; "every character is checked" removes the round trip that
 makes a frame's text the only one; a dangling character read as nothing is
-another platform's decoder; and "a bad header is a bad header" folds the
-frame's refusals into the text's. None of them is contrived; each is what the
-tree would contain if the check had been left for later.
+another platform's decoder; "a bad header is a bad header" folds the frame's
+refusals into the text's; and "the frame bounds what the text holds" walks a
+string before asking how long it is. None of them is contrived; each is what
+the tree would contain if the check had been left for later.
 
 Where a violator must break two things to break one, it says so and declares
-both in `src/ration/conformance/support/codecs.py`.
+both in `src/ration/conformance/support/codecs.py`. The three that replace the
+text read whole -- `lenient-text`, `library-strict` and `skips-text-decode` --
+keep the text's length bound in front of it, and the two that replace `decode`
+whole keep the maximum where the reference reader has it, so each still drops
+only the check its name says.
 """
 
 from __future__ import annotations
 
 import base64
 import zlib
+from collections.abc import Buffer
 
 from ration.frame import (
     _CHECKED_HEADER,
@@ -54,6 +61,7 @@ __all__ = [
     "IgnoresTrailingCodec",
     "LenientTextCodec",
     "LibraryStrictTextCodec",
+    "NoCeilingCodec",
     "NonCanonicalTextCodec",
     "SequencesBeforeCheckingCodec",
     "SkipsTextDecodeCodec",
@@ -62,6 +70,7 @@ __all__ = [
     "UncheckedLengthCodec",
     "UncheckedSequenceCodec",
     "UncheckedVersionCodec",
+    "WalksBeforeBoundingCodec",
 ]
 
 
@@ -75,7 +84,7 @@ class UncheckedLengthCodec(FrameCodec):
     wrong name, so a log record cannot tell a cut frame from a corrupted one.
     """
 
-    def header_present(self, data: bytes) -> FrameRefusal | None:
+    def header_present(self, data: memoryview) -> FrameRefusal | None:
         return None
 
     def body_present(self, length: int, present: int) -> FrameRefusal | None:
@@ -93,6 +102,22 @@ class IgnoresTrailingCodec(FrameCodec):
     """
 
     def nothing_trailing(self, length: int, present: int) -> FrameRefusal | None:
+        return None
+
+
+class NoCeilingCodec(FrameCodec):
+    """Violates: `frame-length`. Takes whatever the four-byte length field can declare.
+
+    The field's own limit read as the frame's: up to 4 GiB of body, which the
+    receiver copies and checksums before anything says no. A frame past the
+    maximum and honestly checksummed is accepted. A header alone that declares
+    one is refused as `truncated`, which tells a receiver to read on for the
+    body it should never have buffered. An input past the maximum by its bytes
+    alone is copied whole and refused only after the CRC, as `trailing-bytes`.
+    Every other check is the reference reader's.
+    """
+
+    def within_maximum(self, length: int, size: int) -> FrameRefusal | None:
         return None
 
 
@@ -143,14 +168,24 @@ class CrcBeforeVersionCodec(FrameCodec):
     the CRC is refused here as corrupted rather than as a version this reader
     does not speak, so the one refusal that would tell an operator to upgrade
     is the one this reader cannot produce.
+
+    The maximum stays where the reference reader has it, before anything
+    touches the body, which puts it before this reader's version check too:
+    a version read after the body is read after the bound on the body. So a
+    v2 header whose length slot holds more than v1's maximum is refused here
+    as `oversized`, the same defect seen from the length field's side.
     """
 
-    def decode(self, data: bytes, ledger: SequenceLedger) -> Frame | FrameRefusal:
-        data = bytes(data)
-        refused = self.header_present(data)
+    def decode(self, data: Buffer, ledger: SequenceLedger) -> Frame | FrameRefusal:
+        view = memoryview(data).cast("B")
+        refused = self.header_present(view)
         if refused is not None:
             return refused
-        version, kind, value, length, crc = _HEADER.unpack_from(data)
+        version, kind, value, length, crc = _HEADER.unpack_from(view)
+        refused = self.within_maximum(length, len(view))
+        if refused is not None:
+            return refused
+        data = bytes(view)
         present = len(data) - HEADER_SIZE
         refused = self.body_present(length, present)
         if refused is not None:
@@ -232,12 +267,12 @@ class SequencesBeforeCheckingCodec(FrameCodec):
     intact this time -- is refused as a duplicate of a frame nothing accepted.
     """
 
-    def decode(self, data: bytes, ledger: SequenceLedger) -> Frame | FrameRefusal:
-        data = bytes(data)
-        refused = self.header_present(data)
+    def decode(self, data: Buffer, ledger: SequenceLedger) -> Frame | FrameRefusal:
+        view = memoryview(data).cast("B")
+        refused = self.header_present(view)
         if refused is not None:
             return refused
-        version, kind, value, length, crc = _HEADER.unpack_from(data)
+        version, kind, value, length, crc = _HEADER.unpack_from(view)
         # The defect: judged and recorded here, before anything else is known.
         sequence = Sequence.from_value(value)
         refused = self.in_sequence(sequence, ledger)
@@ -247,6 +282,10 @@ class SequencesBeforeCheckingCodec(FrameCodec):
         refused = self.version_known(version)
         if refused is not None:
             return refused
+        refused = self.within_maximum(length, len(view))
+        if refused is not None:
+            return refused
+        data = bytes(view)
         present = len(data) - HEADER_SIZE
         refused = self.body_present(length, present)
         if refused is not None:
@@ -277,6 +316,9 @@ class LenientTextCodec(FrameCodec):
     """
 
     def from_text(self, text: str) -> bytes | FrameRefusal:
+        refused = self.text_within_maximum(text)
+        if refused is not None:
+            return refused
         try:
             return base64.urlsafe_b64decode(text + "==")
         except ValueError as error:
@@ -295,6 +337,9 @@ class SkipsTextDecodeCodec(FrameCodec):
     """
 
     def from_text(self, text: str) -> bytes | FrameRefusal:
+        refused = self.text_within_maximum(text)
+        if refused is not None:
+            return refused
         # The raw value an HTTP server hands over, which is latin-1 bytes.
         return text.encode("latin-1", "replace")
 
@@ -323,6 +368,9 @@ class LibraryStrictTextCodec(FrameCodec):
     """
 
     def from_text(self, text: str) -> bytes | FrameRefusal:
+        refused = self.text_within_maximum(text)
+        if refused is not None:
+            return refused
         try:
             return base64.b64decode(
                 text + "=" * (-len(text) % 4), altchars=b"-_", validate=True
@@ -362,3 +410,19 @@ class CollapsesLayersCodec(FrameCodec):
         if isinstance(result, FrameRefusal):
             return FrameRefusal(MALFORMED_TEXT, result.reason)
         return result
+
+
+class WalksBeforeBoundingCodec(FrameCodec):
+    """Violates: `frame-text`. Reads every character before it asks how many there are.
+
+    "The frame bounds what the text holds": the bytes a text decodes to are
+    held to the maximum by the frame's own checks, so the text's length goes
+    unread. A text longer than the largest frame's is walked to its end and
+    decoded first, which is the pass the bound exists to spare, and a string
+    whose last character is outside the alphabet is refused as
+    `malformed-text` -- a fault found only by reading every character before
+    it, in a string its length alone refused. Every other check is strict.
+    """
+
+    def text_within_maximum(self, text: str) -> FrameRefusal | None:
+        return None

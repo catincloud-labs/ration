@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 # `ration` package of its own, so the two cannot share an environment (README,
 # "Installing").
 name = "catincloud-ration"
-version = "0.2.1"
+version = "0.3.0"
 description = "A bounded claim on a finite shared pool, granted for a period and refused rather than overdrawn."
 readme = "README.md"
 # The PEP 639 form: an SPDX expression, which the built metadata carries as
