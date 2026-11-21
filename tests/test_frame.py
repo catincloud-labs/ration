@@ -11,8 +11,11 @@ pinned as an assertion rather than left to the log reader.
 from __future__ import annotations
 
 import base64
+import importlib.util
 import random
 import string
+import sys
+import types
 import zlib
 
 import pytest
@@ -25,6 +28,8 @@ from ration.frame import (
     HEADER_SIZE,
     KINDS,
     MALFORMED_TEXT,
+    MAX_BODY_LENGTH,
+    OVERSIZED,
     ROLE_CLAIM,
     TRUNCATED,
     Frame,
@@ -184,6 +189,7 @@ def test_a_fresh_ledger_takes_the_first_frame_as_its_baseline() -> None:
         pytest.param(dict(kind=99), id="unregistered-kind"),
         pytest.param(dict(sequence=7), id="bare-int-for-sequence"),
         pytest.param(dict(body="text"), id="str-for-body"),
+        pytest.param(dict(body=bytes(MAX_BODY_LENGTH + 1)), id="body-past-the-maximum"),
     ],
 )
 def test_encode_raises_on_a_senders_own_mistake(bad: dict[str, object]) -> None:
@@ -191,6 +197,98 @@ def test_encode_raises_on_a_senders_own_mistake(bad: dict[str, object]) -> None:
     arguments.update(bad)
     with pytest.raises((TypeError, ValueError)):
         encode(**arguments)  # type: ignore[arg-type]
+
+
+def test_the_maximum_is_one_mebibyte_of_body_for_every_kind() -> None:
+    """The published number, and a body of exactly that length round trips under every kind."""
+    assert MAX_BODY_LENGTH == 1_048_576 == 1 << 20
+    largest = bytes(MAX_BODY_LENGTH)
+    for kind in KINDS:
+        decoded = decode(encode(kind, Sequence(1, 0), largest), SequenceLedger())
+        assert isinstance(decoded, Frame), (kind, decoded)
+        assert decoded.kind == kind and len(decoded.body) == MAX_BODY_LENGTH
+
+
+def test_the_largest_frames_text_is_the_longest_text_read() -> None:
+    """The text bound pinned by encoding, not by the formula the module computes it with.
+
+    The largest frame's text is 1,398,126 characters and is read; one
+    character more is refused as `oversized`, though that longer text is well
+    formed and would decode.
+    """
+    text = encode_text(FINGERPRINT, Sequence(1, 0), bytes(MAX_BODY_LENGTH))
+    assert len(text) == 1_398_126
+    decoded = decode_text(text, SequenceLedger())
+    assert isinstance(decoded, Frame), decoded
+    longer = text + "A"
+    assert len(longer) % 4 != 1, "the longer text must be well formed, or this decides nothing"
+    refused = decode_text(longer, SequenceLedger())
+    assert isinstance(refused, FrameRefusal) and refused.control == OVERSIZED, refused
+
+
+class Copied(Exception):
+    """Raised by :class:`Untouchable` when the reader copies it."""
+
+
+class Untouchable(bytes):
+    """Bytes that raise when `bytes()` copies them, which is how the reader copies its input."""
+
+    def __bytes__(self) -> bytes:
+        raise Copied(f"{len(self)} bytes copied")
+
+
+def test_an_input_past_the_maximum_is_refused_before_it_is_copied() -> None:
+    """The reference reader bounds its input before its one copy of it.
+
+    The probe is calibrated on the other arm first: an input within the
+    maximum IS copied, and the probe says so. Then each way past the maximum
+    -- a header declaring too much, and an honest header followed by more
+    bytes than the largest frame holds -- is refused `oversized` with no copy.
+    The probe sees only a copy made by `bytes()`; a reader that copied by a
+    slice would evade it, so it pins this reader, not every reader.
+    """
+    healthy = encode(FINGERPRINT, Sequence(7, 3), b'{"a":1}')
+    with pytest.raises(Copied):
+        decode(Untouchable(healthy), SequenceLedger())
+
+    checked = healthy[:10] + (MAX_BODY_LENGTH + 1).to_bytes(4, "big")
+    crc = zlib.crc32(checked + bytes(MAX_BODY_LENGTH + 1)).to_bytes(4, "big")
+    declares_too_much = checked + crc + bytes(MAX_BODY_LENGTH + 1)
+    flooded = healthy + bytes(MAX_BODY_LENGTH)
+    for data in (declares_too_much, flooded):
+        refused = decode(Untouchable(data), SequenceLedger())
+        assert isinstance(refused, FrameRefusal) and refused.control == OVERSIZED, refused
+
+
+def test_a_maximum_past_the_length_field_is_refused_at_import(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The import-time guard on the maximum, calibrated on both arms.
+
+    The module's own source runs clean, and the same source with the maximum
+    planted at 2**32, one past what the four-byte field can declare, raises
+    before anything is defined. Run from the source text rather than by
+    reloading the module, so the module every other test holds is untouched.
+    """
+    spec = importlib.util.find_spec("ration.frame")
+    assert spec is not None and spec.origin is not None
+    with open(spec.origin, encoding="utf-8") as handle:
+        source = handle.read()
+    stated = "MAX_BODY_LENGTH = 1_048_576"
+    assert source.count(stated) == 1, "the plant below no longer finds the constant"
+    origin = spec.origin
+
+    def run(text: str) -> None:
+        # A module of its own name, registered while it runs, because
+        # `dataclass` looks its defining module up in `sys.modules`.
+        module = types.ModuleType("planted_frame")
+        monkeypatch.setitem(sys.modules, module.__name__, module)
+        exec(compile(text, origin, "exec"), module.__dict__)
+
+    run(source)
+    for planted in ("MAX_BODY_LENGTH = 1 << 32", "MAX_BODY_LENGTH = 0"):
+        with pytest.raises(ValueError, match="32-bit length field"):
+            run(source.replace(stated, planted))
 
 
 @pytest.mark.parametrize(
@@ -277,7 +375,11 @@ def test_the_frames_refusals_cannot_be_mistaken_for_the_envelopes() -> None:
     # not an envelope that failed to parse, and the names keep them apart.
     assert MALFORMED_TEXT in CONTROLS
     assert MALFORMED_TEXT not in ENVELOPE_CONTROLS
-    assert len(CONTROLS) == 9
+    # The tenth: more than any receiver must accept, which no envelope
+    # decoder is ever handed the chance to say.
+    assert OVERSIZED in CONTROLS
+    assert OVERSIZED not in ENVELOPE_CONTROLS
+    assert len(CONTROLS) == 10
 
 
 def test_the_frame_version_is_one_and_the_registry_names_five_kinds() -> None:

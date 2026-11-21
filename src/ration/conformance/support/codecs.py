@@ -43,6 +43,7 @@ from ration.conformance.frame_violators import (
     IgnoresTrailingCodec,
     LenientTextCodec,
     LibraryStrictTextCodec,
+    NoCeilingCodec,
     NonCanonicalTextCodec,
     SequencesBeforeCheckingCodec,
     SkipsTextDecodeCodec,
@@ -51,6 +52,7 @@ from ration.conformance.frame_violators import (
     UncheckedLengthCodec,
     UncheckedSequenceCodec,
     UncheckedVersionCodec,
+    WalksBeforeBoundingCodec,
 )
 
 __all__ = ["CODECS", "BODY", "CLAIM", "CodecCase", "CodecUnderTest"]
@@ -176,6 +178,8 @@ CODECS: list[CodecCase] = [
     _case("correct", set(), FrameCodec),
     _case("unchecked-length", {"frame-length"}, UncheckedLengthCodec),
     _case("ignores-trailing", {"frame-length"}, IgnoresTrailingCodec),
+    # The four-byte field read as the maximum: no ceiling but 4 GiB.
+    _case("no-ceiling", {"frame-length"}, NoCeilingCodec),
     _case("unchecked-crc", {"frame-integrity"}, UncheckedCrcCodec),
     # A payload-level check reused as the frame's, as a codec: a check that
     # covers the body and leaves the header bare.
@@ -198,4 +202,5 @@ CODECS: list[CodecCase] = [
     _case("accepts-non-canonical", {"frame-text"}, NonCanonicalTextCodec),
     _case("drops-dangling-character", {"frame-text"}, DropsDanglingTextCodec),
     _case("collapses-layers", {"frame-text"}, CollapsesLayersCodec),
+    _case("walks-before-bounding", {"frame-text"}, WalksBeforeBoundingCodec),
 ]
