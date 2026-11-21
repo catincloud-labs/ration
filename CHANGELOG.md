@@ -234,13 +234,16 @@ description the README at this entry's commit would become.
 - **"`tests/` and `scripts/` are class C at ceiling 15"** and the list before
   it, **"cyclomatic ceiling 10, strict typing, no recursion, no `while True`,
   no `global`, no blind `except`"**, in the bullet headed *The coding standard
-  is read at class A for `src`*, in this wording from `f99e485`
-  (2026-11-09T20:52:08Z). Read dead 2026-11-21 against the tree this entry's
-  commit leaves, where the vendored checker is re-copied at the shared
-  source's version that adds a statement ceiling, the own-suite readers of
-  rules 3 and 5, and per-class rule 9, and `.github/workflows/checks.yml`
-  declares `scripts` class B (#36). The bullet now gives class A's statement
-  ceiling and new rules, says the vendored copies are class B, and names
+  is read at class A for `src`*. The list and the words "`tests/` and" are
+  from `9ada7a1` (2026-10-29T00:51:42Z), the commit that published the tree;
+  "`scripts/` are class C at ceiling 15" is in this wording from `f99e485`
+  (2026-11-09T20:52:08Z), read with `git blame`. Read dead 2026-11-21 against
+  the tree this entry's commit leaves, where the vendored checker is re-copied
+  at the shared source's version that adds a statement ceiling, the own-suite
+  readers of rules 3 and 5, and per-class rule 9, and
+  `.github/workflows/checks.yml` declares `scripts` class B (#36). The bullet
+  now gives class A's statement ceiling and new rules, says the vendored
+  guards are class B and their self-tests class C, and names
   `power-of-ten.json` and the checks it declares.
 
 ## .github/workflows/release.yml

@@ -451,8 +451,9 @@ jobs:
   # `global` or `nonlocal`, no mutable default, no blind `except`, no computed
   # import, every function annotated. Its rules 3 and 5 are read by the suite,
   # and `power-of-ten.json` at the root names the check that reads each. The
-  # vendored copies under `scripts/` are class B, at ceiling 15 and 60
-  # statements. `tests/` is class C at ceiling 15 without being named. The
+  # vendored guards under `scripts/` are class B, at ceiling 15 and 60
+  # statements, and their `test_*.py` self-tests are test paths, class C.
+  # `tests/` is class C at ceiling 15 without being named. The
   # interpreter is the floor of
   # `requires-python`. The tool versions are written once, in
   # `scripts/power_of_ten_requirements.txt`, which Dependabot's `pip` entry

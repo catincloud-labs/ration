@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import pathlib
 import sys
 import types
 
@@ -38,8 +39,15 @@ PLANTS = [
     ),
     pytest.param(
         "ration.frame",
-        'ROLE_CLAIM: "role-claim",\n',
-        'ROLE_CLAIM: "fingerprint",\n',
+        "ROLE_CLAIM = 5\n",
+        "ROLE_CLAIM = 4\n",
+        "two kinds share a code",
+        id="frame-two-kinds-one-code",
+    ),
+    pytest.param(
+        "ration.frame",
+        '(ROLE_CLAIM, "role-claim"),\n',
+        '(ROLE_CLAIM, "fingerprint"),\n',
         "two kind codes share a name",
         id="frame-two-kinds-one-name",
     ),
@@ -85,6 +93,20 @@ PLANTS = [
         "v1's layout",
         id="codecs-forge-under-another-frame-version",
     ),
+    pytest.param(
+        "ration.conformance.support.codecs",
+        '_case("no-ceiling", {"frame-length"}, NoCeilingCodec),\n',
+        '_case("ignores-trailing", {"frame-length"}, NoCeilingCodec),\n',
+        "two codec cases share a name",
+        id="codecs-two-cases-one-name",
+    ),
+    pytest.param(
+        "ration.conformance.support.backends",
+        '_memory_case("naive", {"atomicity"}, NaiveStore),\n',
+        '_memory_case("correct", {"atomicity"}, NaiveStore),\n',
+        "two memory cases share a name",
+        id="backends-two-cases-one-name",
+    ),
 ]
 
 
@@ -114,23 +136,50 @@ def test_a_planted_wrong_fact_raises_at_import(
         run_as_module(source.replace(stated, planted), origin, monkeypatch)
 
 
-@pytest.mark.parametrize("module", ["ration.frame", "ration.publish", "ration.conformance.support.codecs"])
-def test_every_module_with_a_load_time_check_has_a_plant(module: str) -> None:
-    """A module whose source raises at top level has at least one row in `PLANTS`.
+def load_time_raises(source: str) -> int:
+    """How many top-level statements of `source` can raise while the module loads.
 
-    Read by a different method from the rows: the source's own top-level `if`
-    statements whose body is a `raise`, counted with `ast`, must be matched by
-    as many rows for that module. A check added with no row is red here.
+    Every statement at module level other than a `def` or a `class` is run at
+    import, so one holding a `raise` anywhere inside it -- an `if` body, its
+    `else`, a `try`, a loop -- is a load-time check.
     """
-    _, source = source_of(module)
-    checks = [
-        node
+    skip = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+    return sum(
+        1
         for node in ast.parse(source).body
-        if isinstance(node, ast.If) and any(isinstance(child, ast.Raise) for child in node.body)
-    ]
-    rows = [row for row in PLANTS if row.values[0] == module]
-    planted_messages = {str(row.values[3]) for row in rows}
-    assert checks, f"{module} has no load-time check, so it does not belong in this list"
-    assert len(planted_messages) >= len(checks), (
-        f"{module} has {len(checks)} load-time check(s) and plants reach {len(planted_messages)}"
+        if not isinstance(node, skip) and any(isinstance(n, ast.Raise) for n in ast.walk(node))
     )
+
+
+def modules_of_src() -> list[str]:
+    """Every module under `src/ration`, by import name, read from the tree rather than from a list."""
+    spec = importlib.util.find_spec("ration")
+    assert spec is not None and spec.submodule_search_locations, "ration is not importable"
+    package = pathlib.Path(next(iter(spec.submodule_search_locations)))
+    names = []
+    for path in sorted(package.rglob("*.py")):
+        parts = path.relative_to(package.parent).with_suffix("").parts
+        names.append(".".join(parts[:-1] if parts[-1] == "__init__" else parts))
+    return names
+
+
+def test_every_load_time_check_in_src_has_a_plant() -> None:
+    """Every module of `src` that can raise at import has a `PLANTS` row for each check.
+
+    Read by a different method from the rows: every module under `src/ration`
+    is enumerated from the tree, its top-level statements that hold a `raise`
+    are counted with `ast`, and the count must be matched by as many distinct
+    planted messages for that module. A load-time check added anywhere in
+    `src` with no plant is red here, and the positive control is that the
+    enumeration finds the modules this file plants.
+    """
+    modules = modules_of_src()
+    planted = {str(row.values[0]) for row in PLANTS}
+    assert planted <= set(modules), sorted(planted - set(modules))
+    short = []
+    for module in modules:
+        checks = load_time_raises(source_of(module)[1])
+        messages = {str(row.values[3]) for row in PLANTS if row.values[0] == module}
+        if len(messages) < checks:
+            short.append(f"{module}: {checks} load-time check(s), {len(messages)} planted")
+    assert not short, short

@@ -207,3 +207,8 @@ CODECS: list[CodecCase] = [
     _case("collapses-layers", {"frame-text"}, CollapsesLayersCodec),
     _case("walks-before-bounding", {"frame-text"}, WalksBeforeBoundingCodec),
 ]
+
+# A case's name is its test id and the name a strict xfail reports, so two
+# cases with one name would be one line in a run that judged two codecs.
+if len({case.name for case in CODECS}) != len(CODECS):
+    raise ValueError("two codec cases share a name")

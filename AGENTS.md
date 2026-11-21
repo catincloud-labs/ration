@@ -259,17 +259,26 @@ everywhere or nowhere. Nothing checks it.
 - **The coding standard is read at class A for `src`**, by the `power of ten`
   job (`scripts/check_power_of_ten.py`): cyclomatic ceiling 10, 40 statements,
   strict typing, no recursion, no `while True`, no `global` or `nonlocal`, no
-  mutable default, no blind `except`, no computed import. The vendored copies
-  under `scripts/` are class B, at ceiling 15 and 60 statements. `tests/` is
-  class C at ceiling 15, and so are the suite's `test_*.py` modules and its
+  mutable default, no blind `except`, no computed import. The vendored guards
+  under `scripts/` are class B, at ceiling 15 and 60 statements; their
+  self-tests there, `scripts/test_*.py`, are test paths and so class C.
+  `tests/` is class C at ceiling 15, and so are the suite's `test_*.py` modules
+  and its
   `conftest.py` under `src/ration/conformance/`, which the check reads as test
   paths wherever they sit.
   - **Rules 3 and 5 are read by the suite, and `power-of-ten.json` at the root
-    names the check for each.** Rule 3, a stated maximum for what another node
-    sends, is read by the frame's length and text properties. Rule 5, a fact a
-    module holds by construction checked at import with a `raise`, is read by
-    `tests/test_load_time_checks.py`, one planted wrong fact per check. A read
-    or a load-time check added without its entry there is red.
+    names the check for each.** The `power of ten` job refuses a declaration
+    whose check does not resolve, but it cannot see a read that was never
+    declared, so a change that adds a read from another node adds it there.
+    - Rule 3, a stated maximum for what another node sends, lists the frame
+      and is read by the frame's length and text properties. The records in
+      the coordination store are not listed: they are this package's own state
+      read back, outside the sweep's scope by the issue that ordered it, and
+      they carry no stated maximum.
+    - Rule 5, a fact a module holds by construction checked at import with a
+      `raise`, is read by `tests/test_load_time_checks.py`, one planted wrong
+      fact per check. There a load-time check anywhere under `src/ration` with
+      no plant is red, counted from the modules' own source with `ast`.
   - The check is the **one reader of
   suppressions**: a deviation is a `noqa` or a `type: ignore[code]` that names
   the rule with its reason on the same line, and one that is unused or gives no
