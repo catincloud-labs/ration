@@ -375,6 +375,14 @@ KINDS = MappingProxyType(
 if any(not 0 < kind < 256 for kind in KINDS):
     raise ValueError("a kind code must fit one byte and not be zero")
 
+# A name is what a payload decoder switches on, so two codes sharing one is the
+# same ambiguity as two codes sharing a meaning. The dict literal above keeps
+# the last of two identical keys silently, and it says nothing about two keys
+# with one name, so the names are checked here, at import, for the same reason
+# as the byte check above.
+if len(set(KINDS.values())) != len(KINDS):
+    raise ValueError("two kind codes share a name")
+
 # The closed control set a decode can refuse with. `tests/test_frame.py` holds
 # it apart from a consumer envelope decoder's, because a CRC failure and a
 # digest mismatch landing as one signal would hide which layer failed. The one
@@ -397,25 +405,36 @@ MALFORMED_TEXT = "malformed-text"
 # largest frame's. See the module docstring.
 OVERSIZED = "oversized"
 
-CONTROLS = frozenset(
-    {
-        MALFORMED_TEXT,
-        OVERSIZED,
-        TRUNCATED,
-        UNKNOWN_FRAME_VERSION,
-        CRC_MISMATCH,
-        TRAILING_BYTES,
-        UNKNOWN_PAYLOAD_KIND,
-        SEQUENCE_DUPLICATE,
-        SEQUENCE_REPLAYED,
-        SEQUENCE_GAP,
-    }
+_CONTROL_NAMES = (
+    MALFORMED_TEXT,
+    OVERSIZED,
+    TRUNCATED,
+    UNKNOWN_FRAME_VERSION,
+    CRC_MISMATCH,
+    TRAILING_BYTES,
+    UNKNOWN_PAYLOAD_KIND,
+    SEQUENCE_DUPLICATE,
+    SEQUENCE_REPLAYED,
+    SEQUENCE_GAP,
 )
+CONTROLS = frozenset(_CONTROL_NAMES)
+
+# A control is a name a log record is read by, so two controls spelled alike
+# are one signal where the module states two. A set built from them would keep
+# one and say nothing, so the spellings are checked at import.
+if len(CONTROLS) != len(_CONTROL_NAMES):
+    raise ValueError("two frame controls share a name")
 
 #: The text form's alphabet: base64url, RFC 4648 section 5, with no `=`.
 _TEXT_ALPHABET = frozenset(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 )
+
+# Base64 is six bits a character, so its alphabet is 64 distinct characters. A
+# character lost or doubled in the literal would let the character check pass
+# a text the decode then misreads, or refuse a canonical one.
+if len(_TEXT_ALPHABET) != 64:
+    raise ValueError("the text form's alphabet must be 64 distinct characters")
 
 
 @dataclass(frozen=True)

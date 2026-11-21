@@ -172,7 +172,10 @@ def _case(name: str, violates: set[str], codec_class: type[FrameCodec]) -> Codec
     return case
 
 
-assert FRAME_VERSION == 1, "the forge above packs v1's layout; a new version re-derives it"
+# The forge above packs v1's layout, so a new frame version re-derives it. A
+# `raise`, not an `assert`, so the guard holds under `python -O` too.
+if FRAME_VERSION != 1:
+    raise ValueError("the forge packs v1's layout; a new frame version re-derives it")
 
 CODECS: list[CodecCase] = [
     _case("correct", set(), FrameCodec),

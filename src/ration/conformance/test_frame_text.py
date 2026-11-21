@@ -14,8 +14,11 @@ by `lenient-text`, which reads with the standard library's defaults; by
 never the round trip; by `drops-dangling-character`, which reads a dangling
 character as nothing, as Node's `Buffer` does; by `collapses-layers`,
 which answers the frame's refusals as the text's; and by
-`walks-before-bounding`, which reads every character of a string before it
-asks how long the string is.
+`walks-before-bounding` (`WalksBeforeBoundingCodec`), which reads every
+character of a string before it asks how long the string is. That violator is
+the one the coding standard's rule 3 names for frames read as text:
+`power-of-ten.json` declares this module as the check that reads the text's
+maximum.
 
 One arm is separated by no registered reader: a character outside ASCII,
 which every reader here refuses as text because the standard library raises
@@ -29,6 +32,7 @@ nothing, for the reason `src/ration/conformance/support/codecs.py` gives: the pr
 decided with the sequence held still.
 
 Measures: README.md, Frame property 6
+Measures: scripts/check_power_of_ten.py, rule 3
 """
 
 from __future__ import annotations
