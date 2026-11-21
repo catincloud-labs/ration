@@ -227,7 +227,9 @@ own restarts is the consumer's decision, not this module's.
   and so is a header's text. Every way they can be wrong is a
   :class:`FrameRefusal` with a control from the closed set below. Encode is
   the other posture: a sender's own arguments are its own data, and a wrong
-  one raises.
+  one raises. So does a decode handed something that is not a contiguous
+  buffer at all, which is the caller's mistake rather than bytes off a
+  network.
 """
 
 from __future__ import annotations
@@ -235,6 +237,7 @@ from __future__ import annotations
 import base64
 import struct
 import zlib
+from collections.abc import Buffer
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -643,24 +646,30 @@ class FrameCodec:
 
     # -- reading, in the stated order ----------------------------------------
 
-    def decode(self, data: bytes, ledger: SequenceLedger) -> Frame | FrameRefusal:
-        """Bytes to frame, or a typed refusal -- never an exception.
+    def decode(self, data: Buffer, ledger: SequenceLedger) -> Frame | FrameRefusal:
+        """Bytes to frame, or a typed refusal -- never an exception on bytes.
 
-        The header is read in place and the input measured by its length, so
-        ``data`` is copied only once the maximum has bounded it: an input past
-        the maximum is refused before a byte of its body is copied or read.
+        ``data`` is read as the bytes it holds, through a flat view: ``bytes``,
+        ``bytearray`` or a contiguous ``memoryview`` of any format. The header
+        is read from the view and the input measured by the view's length in
+        bytes, so ``data`` is copied only once the maximum has bounded it: an
+        input past the maximum is refused before a byte of its body is copied
+        or read. Anything that is not a contiguous buffer is the caller's own
+        mistake rather than bytes off a network, and raises ``TypeError``, as
+        :meth:`decode_text` does on a ``text`` that is not a ``str``.
         """
-        refused = self.header_present(data)
+        view = memoryview(data).cast("B")
+        refused = self.header_present(view)
         if refused is not None:
             return refused
-        version, kind, value, length, crc = _HEADER.unpack_from(data)
+        version, kind, value, length, crc = _HEADER.unpack_from(view)
         refused = self.version_known(version)
         if refused is not None:
             return refused
-        refused = self.within_maximum(length, len(data))
+        refused = self.within_maximum(length, len(view))
         if refused is not None:
             return refused
-        data = bytes(data)
+        data = bytes(view)
         present = len(data) - HEADER_SIZE
         refused = self.body_present(length, present)
         if refused is not None:
@@ -682,7 +691,7 @@ class FrameCodec:
         ledger.advance(sequence)
         return Frame(kind=kind, sequence=sequence, body=body)
 
-    def header_present(self, data: bytes) -> FrameRefusal | None:
+    def header_present(self, data: memoryview) -> FrameRefusal | None:
         if len(data) < HEADER_SIZE:
             return FrameRefusal(
                 TRUNCATED,
@@ -771,7 +780,7 @@ def encode(kind: int, sequence: Sequence, body: bytes) -> bytes:
     return _V1.encode(kind, sequence, body)
 
 
-def decode(data: bytes, ledger: SequenceLedger) -> Frame | FrameRefusal:
+def decode(data: Buffer, ledger: SequenceLedger) -> Frame | FrameRefusal:
     """Bytes to a checked frame, or a typed refusal. See :meth:`FrameCodec.decode`."""
     return _V1.decode(data, ledger)
 

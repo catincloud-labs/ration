@@ -179,6 +179,15 @@ def test_only_the_canonical_text_is_read_as_a_frame(codec: CodecUnderTest) -> No
     )
     assert isinstance(codec.decode_text(healthy), Frame)
 
+    # The other side of the same bound: the largest frame's text, exactly
+    # that long, is read. A bound set short of it refuses a frame every
+    # receiver must accept.
+    largest = codec.healthy_text(Sequence.start(EPOCH), bytes(MAX_BODY_LENGTH))
+    assert len(largest) == longest
+    read = codec.decode_text(largest)
+    assert isinstance(read, Frame), f"the largest frame's text was refused: {read}"
+    assert len(read.body) == MAX_BODY_LENGTH
+
     accepted = codec.decode_text(healthy)
     assert isinstance(accepted, Frame), (
         f"the canonical text of a healthy frame was refused: {accepted}"

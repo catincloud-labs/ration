@@ -24,13 +24,18 @@ string before asking how long it is. None of them is contrived; each is what
 the tree would contain if the check had been left for later.
 
 Where a violator must break two things to break one, it says so and declares
-both in `src/ration/conformance/support/codecs.py`.
+both in `src/ration/conformance/support/codecs.py`. The three that replace the
+text read whole -- `lenient-text`, `library-strict` and `skips-text-decode` --
+keep the text's length bound in front of it, and the two that replace `decode`
+whole keep the maximum where the reference reader has it, so each still drops
+only the check its name says.
 """
 
 from __future__ import annotations
 
 import base64
 import zlib
+from collections.abc import Buffer
 
 from ration.frame import (
     _CHECKED_HEADER,
@@ -79,7 +84,7 @@ class UncheckedLengthCodec(FrameCodec):
     wrong name, so a log record cannot tell a cut frame from a corrupted one.
     """
 
-    def header_present(self, data: bytes) -> FrameRefusal | None:
+    def header_present(self, data: memoryview) -> FrameRefusal | None:
         return None
 
     def body_present(self, length: int, present: int) -> FrameRefusal | None:
@@ -171,15 +176,16 @@ class CrcBeforeVersionCodec(FrameCodec):
     as `oversized`, the same defect seen from the length field's side.
     """
 
-    def decode(self, data: bytes, ledger: SequenceLedger) -> Frame | FrameRefusal:
-        refused = self.header_present(data)
+    def decode(self, data: Buffer, ledger: SequenceLedger) -> Frame | FrameRefusal:
+        view = memoryview(data).cast("B")
+        refused = self.header_present(view)
         if refused is not None:
             return refused
-        version, kind, value, length, crc = _HEADER.unpack_from(data)
-        refused = self.within_maximum(length, len(data))
+        version, kind, value, length, crc = _HEADER.unpack_from(view)
+        refused = self.within_maximum(length, len(view))
         if refused is not None:
             return refused
-        data = bytes(data)
+        data = bytes(view)
         present = len(data) - HEADER_SIZE
         refused = self.body_present(length, present)
         if refused is not None:
@@ -261,11 +267,12 @@ class SequencesBeforeCheckingCodec(FrameCodec):
     intact this time -- is refused as a duplicate of a frame nothing accepted.
     """
 
-    def decode(self, data: bytes, ledger: SequenceLedger) -> Frame | FrameRefusal:
-        refused = self.header_present(data)
+    def decode(self, data: Buffer, ledger: SequenceLedger) -> Frame | FrameRefusal:
+        view = memoryview(data).cast("B")
+        refused = self.header_present(view)
         if refused is not None:
             return refused
-        version, kind, value, length, crc = _HEADER.unpack_from(data)
+        version, kind, value, length, crc = _HEADER.unpack_from(view)
         # The defect: judged and recorded here, before anything else is known.
         sequence = Sequence.from_value(value)
         refused = self.in_sequence(sequence, ledger)
@@ -275,10 +282,10 @@ class SequencesBeforeCheckingCodec(FrameCodec):
         refused = self.version_known(version)
         if refused is not None:
             return refused
-        refused = self.within_maximum(length, len(data))
+        refused = self.within_maximum(length, len(view))
         if refused is not None:
             return refused
-        data = bytes(data)
+        data = bytes(view)
         present = len(data) - HEADER_SIZE
         refused = self.body_present(length, present)
         if refused is not None:
@@ -309,6 +316,9 @@ class LenientTextCodec(FrameCodec):
     """
 
     def from_text(self, text: str) -> bytes | FrameRefusal:
+        refused = self.text_within_maximum(text)
+        if refused is not None:
+            return refused
         try:
             return base64.urlsafe_b64decode(text + "==")
         except ValueError as error:
@@ -327,6 +337,9 @@ class SkipsTextDecodeCodec(FrameCodec):
     """
 
     def from_text(self, text: str) -> bytes | FrameRefusal:
+        refused = self.text_within_maximum(text)
+        if refused is not None:
+            return refused
         # The raw value an HTTP server hands over, which is latin-1 bytes.
         return text.encode("latin-1", "replace")
 
@@ -355,6 +368,9 @@ class LibraryStrictTextCodec(FrameCodec):
     """
 
     def from_text(self, text: str) -> bytes | FrameRefusal:
+        refused = self.text_within_maximum(text)
+        if refused is not None:
+            return refused
         try:
             return base64.b64decode(
                 text + "=" * (-len(text) % 4), altchars=b"-_", validate=True

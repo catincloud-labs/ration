@@ -15,8 +15,10 @@ import importlib.util
 import random
 import string
 import sys
+import tracemalloc
 import types
 import zlib
+from collections.abc import Buffer
 
 import pytest
 
@@ -226,38 +228,71 @@ def test_the_largest_frames_text_is_the_longest_text_read() -> None:
     assert isinstance(refused, FrameRefusal) and refused.control == OVERSIZED, refused
 
 
-class Copied(Exception):
-    """Raised by :class:`Untouchable` when the reader copies it."""
+def peak_allocation(data: Buffer) -> int:
+    """The most memory `decode` held at once while reading `data`, in bytes.
 
-
-class Untouchable(bytes):
-    """Bytes that raise when `bytes()` copies them, which is how the reader copies its input."""
-
-    def __bytes__(self) -> bytes:
-        raise Copied(f"{len(self)} bytes copied")
+    `tracemalloc` counts every allocation the reader makes, a copy, a slice
+    or a buffer alike, so the probe does not depend on how a reader copies.
+    `data` is built before tracing starts, so it is not counted.
+    """
+    tracemalloc.start()
+    try:
+        decode(data, SequenceLedger())
+        return tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
 
 
 def test_an_input_past_the_maximum_is_refused_before_it_is_copied() -> None:
-    """The reference reader bounds its input before its one copy of it.
+    """The reference reader bounds its input before it allocates for it.
 
-    The probe is calibrated on the other arm first: an input within the
-    maximum IS copied, and the probe says so. Then each way past the maximum
-    -- a header declaring too much, and an honest header followed by more
-    bytes than the largest frame holds -- is refused `oversized` with no copy.
-    The probe sees only a copy made by `bytes()`; a reader that copied by a
-    slice would evade it, so it pins this reader, not every reader.
+    The probe is calibrated on the other arm first: a frame of the largest
+    body is copied, and the probe sees at least that many bytes held. Then
+    each way past the maximum is refused `oversized` while the reader holds
+    less than a hundredth of that: a header declaring too much, an honest
+    header followed by more bytes than the largest frame holds, and the same
+    flood handed over as a view of eight-byte items, whose length in items is
+    an eighth of its length in bytes.
     """
-    healthy = encode(FINGERPRINT, Sequence(7, 3), b'{"a":1}')
-    with pytest.raises(Copied):
-        decode(Untouchable(healthy), SequenceLedger())
+    largest = encode(FINGERPRINT, Sequence(7, 3), bytes(MAX_BODY_LENGTH))
+    assert peak_allocation(largest) >= MAX_BODY_LENGTH, "the probe saw no copy where one is made"
 
+    healthy = encode(FINGERPRINT, Sequence(7, 3), b'{"a":1}')
     checked = healthy[:10] + (MAX_BODY_LENGTH + 1).to_bytes(4, "big")
     crc = zlib.crc32(checked + bytes(MAX_BODY_LENGTH + 1)).to_bytes(4, "big")
     declares_too_much = checked + crc + bytes(MAX_BODY_LENGTH + 1)
     flooded = healthy + bytes(MAX_BODY_LENGTH)
-    for data in (declares_too_much, flooded):
-        refused = decode(Untouchable(data), SequenceLedger())
+    wide = bytearray(8 * (MAX_BODY_LENGTH // 4))
+    wide[: len(healthy)] = healthy
+    as_words = memoryview(wide).cast("Q")
+    assert len(as_words) * 8 > HEADER_SIZE + MAX_BODY_LENGTH > len(as_words)
+    for data in (declares_too_much, flooded, as_words):
+        refused = decode(data, SequenceLedger())
         assert isinstance(refused, FrameRefusal) and refused.control == OVERSIZED, refused
+        assert peak_allocation(data) < MAX_BODY_LENGTH // 100, "the reader allocated for an input it refuses"
+
+
+def test_decode_reads_any_contiguous_buffer_as_its_bytes() -> None:
+    """A frame decodes the same from bytes, a bytearray and a view of any item size."""
+    body = b'{"ab":123}'
+    frame = encode(FINGERPRINT, Sequence(7, 3), body)
+    assert len(frame) % 4 == 0, "the cast below needs a whole number of four-byte items"
+    expected = Frame(kind=FINGERPRINT, sequence=Sequence(7, 3), body=body)
+    assert decode(frame, SequenceLedger()) == expected
+    assert decode(bytearray(frame), SequenceLedger()) == expected
+    assert decode(memoryview(frame), SequenceLedger()) == expected
+    words = memoryview(bytearray(frame)).cast("I")
+    assert len(words) == len(frame) // 4
+    assert decode(words, SequenceLedger()) == expected
+
+
+def test_decode_raises_only_on_a_callers_wrong_type() -> None:
+    """Something that is not a contiguous buffer is not bytes off a network."""
+    frame = encode(FINGERPRINT, Sequence(1, 0), b"")
+    with pytest.raises(TypeError):
+        decode(list(frame), SequenceLedger())  # type: ignore[arg-type]  # the wrong type is the point
+    with pytest.raises(TypeError):
+        decode(memoryview(frame + frame)[::2], SequenceLedger())
 
 
 def test_a_maximum_past_the_length_field_is_refused_at_import(

@@ -236,7 +236,8 @@ its length, and only then is it copied. A header alone that declares too much
 is refused, so a receiver need not read the body. A declared body past the
 maximum and more bytes than the largest frame holds are one observation and
 carry one control. The second is not left for `trailing-bytes`, which reads a
-whole frame with garbage after it, and takes a CRC over all of it to say so.
+whole frame with garbage after it, and can say so only after the input is
+copied whole and the CRC has passed over the declared span.
 
 **A frame can also travel as text**, in a request header, for a route that
 takes no HTTP body. The frame inside is an unchanged v1 frame, and its eight

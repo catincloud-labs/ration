@@ -442,17 +442,16 @@ the page at `e73cf2a` (#18).
 ### The frame's suite
 
 - **"Only a frame's one canonical text is read; any other string is refused as
-  `malformed-text` before a frame check runs"** and the violators of the
-  length row, **"`unchecked-length`, `ignores-trailing`"**. Two cells of the
-  frame's table under *The frame: a checked carrier, with no state of its
-  own*, both from `634c5cf` (2026-11-06T22:59:16Z). Read dead 2026-11-21
-  against the tree this entry's commit leaves, where `src/ration/frame.py`
-  states a maximum of 1 MiB of body, refuses past it as `oversized`, the tenth
-  control, as its third check of eight, and refuses a text longer than the
-  largest frame's as `oversized` before it reads a character (#36). The text
-  row now names `oversized` for a string longer than the largest frame's text
-  and adds `walks-before-bounding`; the length row names the maximum and adds
-  `no-ceiling`.
+  `malformed-text` before a frame check runs"**. A cell of the frame's table
+  under *The frame: a checked carrier, with no state of its own*, from
+  `634c5cf` (2026-11-06T22:59:16Z). Read dead 2026-11-21 against the tree this
+  entry's commit leaves, where `src/ration/frame.py` states a maximum of 1 MiB
+  of body, refuses past it as `oversized`, the tenth control, as its third
+  check of eight, and refuses a text longer than the largest frame's as
+  `oversized` before it reads a character (#36). The cell now names
+  `oversized` for a string longer than the largest frame's text. A list that
+  only gained a member, such as a row's violators, still states what it did
+  and is not recorded here.
 
 ## CHANGELOG.md
 
@@ -690,13 +689,10 @@ cited a moved path are listed beside the docstrings.
 - **"A reader of it must refuse every string that is not the text form as
   `malformed-text`, before any frame check"**, in the docstring of
   `src/ration/conformance/test_frame_text.py`, from `bdc73ff`
-  (2026-10-30T18:13:39Z), and **"Violated by `unchecked-length` and by
-  `ignores-trailing`."**, in the docstring of
-  `src/ration/conformance/test_frame_length.py`, from `9ada7a1`
-  (2026-10-29T00:51:42Z). Read dead 2026-11-21 against the tree this entry's
+  (2026-10-30T18:13:39Z). Read dead 2026-11-21 against the tree this entry's
   commit leaves, where `src/ration/frame.py` states a maximum of 1 MiB of
   body, refuses past it as `oversized`, the tenth control, as its third check
   of eight, and refuses a text longer than the largest frame's as `oversized`
-  before it reads a character (#36). The first now says a string longer than
-  the largest frame's text is refused as `oversized`, and every other as
-  `malformed-text`; the second names `no-ceiling` beside them.
+  before it reads a character (#36). It now says a string longer than the
+  largest frame's text is refused as `oversized`, and every other as
+  `malformed-text`.
