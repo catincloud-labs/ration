@@ -210,10 +210,10 @@ description the README at this entry's commit would become.
 ### Enabling the hook on a clone that already sets a hooks directory
 
 - **"Enable the hook per clone - it does not install itself:
-  `git config core.hooksPath .githooks`."** The last sentence of the same
-  bullet, in this wording from `922eb96` (2026-11-14T02:37:30Z); the command
-  stood there from `9ada7a1` (2026-10-29T00:51:42Z), the commit that
-  published the tree. Read dead 2026-11-22 against `git config` itself: the
+  `git config core.hooksPath .githooks`."** The last sentence of the bullet
+  under the closing-verb rule in *Change workflow*, in this wording from
+  `9ada7a1` (2026-10-29T00:51:42Z), the commit that published the tree, and
+  re-wrapped unchanged in `922eb96` (2026-11-14T02:37:30Z). Read dead 2026-11-22 against `git config` itself: the
   command sets the clone's local value with no warning, replacing a local
   one and overriding a global one, so on a clone that already pointed
   `core.hooksPath` at another hooks directory, following the sentence as
