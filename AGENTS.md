@@ -130,8 +130,15 @@ moves stand behind that rule, each paid for in this organisation:
     own `closingIssuesReferences`. A title becomes the merge commit's message
     and holds no trailer, so a closing verb before `#N` there is refused even
     when you mean it: a close you mean goes in the body, with its trailer.
-    Enable the hook per clone - it does not install itself:
-    `git config core.hooksPath .githooks`.
+    Enable the hook per clone - it does not install itself - unless the
+    clone already sets a hooks directory. If
+    `git config --get core.hooksPath` prints a value (it reads every scope,
+    so a global setting counts), keep it: that directory is expected to run
+    `.githooks/commit-msg` itself, and if its `commit-msg` does not, add that
+    call there. Otherwise run `git config core.hooksPath .githooks`. That
+    command sets this clone's value with no warning, replacing a local one
+    and overriding a global one, so on a clone that had a directory it stops
+    every other hook that directory ran here.
   - The same job fails when `.githooks/commit-msg` is tracked at any index
     mode but `100755` (`scripts/check_hook_mode.py`, its self-test first), since
     git on Linux and macOS skips a hook that is not executable and Git for

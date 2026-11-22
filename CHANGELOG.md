@@ -207,6 +207,21 @@ description the README at this entry's commit would become.
   the title, and the next one says why a close there is refused even when
   meant.
 
+### Enabling the hook on a clone that already sets a hooks directory
+
+- **"Enable the hook per clone - it does not install itself:
+  `git config core.hooksPath .githooks`."** The last sentence of the same
+  bullet, in this wording from `922eb96` (2026-11-14T02:37:30Z); the command
+  stood there from `9ada7a1` (2026-10-29T00:51:42Z), the commit that
+  published the tree. Read dead 2026-11-22 against `git config` itself: the
+  command sets the clone's local value with no warning, replacing a local
+  one and overriding a global one, so on a clone that already pointed
+  `core.hooksPath` at another hooks directory, following the sentence as
+  written stopped every other hook that directory ran there. The sentence
+  now keeps a value `git config --get core.hooksPath` prints, has that
+  directory run `.githooks/commit-msg`, and sets `.githooks` only when no
+  value is set.
+
 ### Every CI check runs from this tree
 
 - **"`.github/workflows/checks.yml`, `pr-hygiene.yml` and `release.yml` are
@@ -245,6 +260,23 @@ description the README at this entry's commit would become.
   now gives class A's statement ceiling and new rules, says the vendored
   guards are class B and their self-tests class C, and names
   `power-of-ten.json` and the checks it declares.
+
+## .githooks/commit-msg
+
+### The header
+
+- **"Enable per clone (hooks are not tracked into .git/hooks by git):
+  `git config core.hooksPath .githooks`"** and, after it, **"a clone that
+  has not run the command above has no guard at all."** The header's
+  enabling instruction and the end of its next sentence, from `9ada7a1`
+  (2026-10-29T00:51:42Z), the commit that published the tree. Read dead
+  2026-11-22 for the reason in the AGENTS.md entry *Enabling the hook on a
+  clone that already sets a hooks directory*: the command replaces a hooks
+  directory the clone already set, and a clone that keeps one that runs this
+  file has the guard without having run it. The header now keeps a value
+  `git config --get core.hooksPath` prints and has that directory run this
+  file, sets `.githooks` only otherwise, and says a clone whose hooks
+  directory does not run the hook has no guard.
 
 ## .github/workflows/release.yml
 
