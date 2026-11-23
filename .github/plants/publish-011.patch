@@ -1,9 +1,0 @@
---- a/src/ration/publish.py
-+++ b/src/ration/publish.py
-@@ -257,5 +257,5 @@
-         or reading.record.token != publisher
-         or reading.record.payload != artefact.encode("utf-8")
-     ):
--        return None
-+        pass
-     return Publication(topic, publisher, reading.version, artefact)

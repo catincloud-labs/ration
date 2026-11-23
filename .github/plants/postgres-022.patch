@@ -1,9 +1,0 @@
---- a/src/ration/postgres.py
-+++ b/src/ration/postgres.py
-@@ -294,5 +294,5 @@
-             # Or it was lost long before the statement and this is only when
-             # the client found out, which a reused connection cannot rule out.
-             # Said in the type, and decided by the caller: see `read()`.
--            refusal = _LostOnReuse if reused else Unreachable
-+            refusal = (Unreachable)
-             raise refusal(str(exc)) from exc

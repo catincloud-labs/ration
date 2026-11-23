@@ -1,9 +1,0 @@
---- a/src/ration/lease.py
-+++ b/src/ration/lease.py
-@@ -235,5 +235,5 @@
- 
-     reading = store.read(attempted.key)
-     if reading.record is None or reading.record.token != attempted.holder:
--        return None
-+        pass
-     return replace(attempted, version=reading.version)
