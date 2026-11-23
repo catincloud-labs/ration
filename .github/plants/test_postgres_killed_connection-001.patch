@@ -1,0 +1,11 @@
+--- a/tests/test_postgres_killed_connection.py
++++ b/tests/test_postgres_killed_connection.py
+@@ -95,7 +95,7 @@
+         try:
+             return super()._execute(sql, params)
+         except _LostOnReuse as exc:
+-            raise Unreachable(str(exc)) from exc
++            raise
+ 
+ 
+ class _RedialsUntilItWorks(PostgresStore):

@@ -1,0 +1,11 @@
+--- a/tests/test_postgres_killed_connection.py
++++ b/tests/test_postgres_killed_connection.py
+@@ -105,7 +105,7 @@
+         try:
+             return super().read(key)
+         except Unreachable:
+-            return super().read(key)
++            raise
+ 
+ 
+ class _CallsEveryConnectionReused(PostgresStore):

@@ -1,0 +1,11 @@
+--- a/tests/test_postgres_killed_connection.py
++++ b/tests/test_postgres_killed_connection.py
+@@ -134,7 +134,7 @@
+         try:
+             return super().compare_and_set(key, expected_version, record, ttl=ttl)
+         except _LostOnReuse:
+-            return super().compare_and_set(key, expected_version, record, ttl=ttl)
++            raise
+ 
+ 
+ @dataclass(frozen=True)

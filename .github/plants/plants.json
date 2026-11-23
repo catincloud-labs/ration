@@ -1,0 +1,22 @@
+[
+ {
+  "id": "permitted-001",
+  "where": "src/ration/conformance/permitted.py:65",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "test_postgres_killed_connection-001",
+  "where": "tests/test_postgres_killed_connection.py:97",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "test_postgres_killed_connection-002",
+  "where": "tests/test_postgres_killed_connection.py:107",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "test_postgres_killed_connection-003",
+  "where": "tests/test_postgres_killed_connection.py:136",
+  "what": "except-handler deleted (re-raises)"
+ }
+]

@@ -1,0 +1,11 @@
+--- a/src/ration/conformance/permitted.py
++++ b/src/ration/conformance/permitted.py
+@@ -63,7 +63,7 @@
+         with self._lock:
+             reading = self._read_locked(key)
+             if reading.version != expected_version:
+-                return Conflict(self._previous.get(key, ABSENT))
++                pass
+             return self._commit_locked(key, record, ttl)
+ 
+     def _commit_locked(
