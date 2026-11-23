@@ -36,9 +36,10 @@ from tests.cases import CASES
 #: store added to the registry is exercised here without this file changing.
 #: `previous-version` differs from the in-memory store only in the version a
 #: conflict carries, so it runs only the tests a plant in its compare-and-set
-#: turned red (`WITH_PERMITTED`), and a test of the arguments, decided before a
-#: store is reached, runs the in-memory store alone (`MEMORY_ONLY`). The plant
-#: passes behind that split are recorded on #35.
+#: turned red (`WITH_PERMITTED`).
+#: A test of the arguments, decided before a store is reached, runs the
+#: in-memory store alone (`MEMORY_ONLY`).
+#: The plant passes behind that split are recorded on #35.
 CORRECT_CASES = [
     case for case in CASES if not case.violates and case.name != "previous-version"
 ]

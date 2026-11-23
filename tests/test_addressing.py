@@ -25,15 +25,12 @@ from tests.cases import CASES
 #: The stores these tests run against: every registered store expected to be
 #: correct, other than `previous-version`. Filtered rather than listed, so a
 #: store added to the registry is exercised here without this file changing.
-#: `previous-version` differs from the in-memory store only in the version a
-#: conflict carries, so it runs only the tests a plant in its compare-and-set
-#: turned red (`WITH_PERMITTED`), and a test of the arguments, decided before a
-#: store is reached, runs the in-memory store alone (`MEMORY_ONLY`). The plant
-#: passes behind that split are recorded on #35.
+#: A test of the arguments, decided before a store is reached, runs the
+#: in-memory store alone (`MEMORY_ONLY`).
+#: The plant passes behind that split are recorded on #35.
 CORRECT_CASES = [
     case for case in CASES if not case.violates and case.name != "previous-version"
 ]
-WITH_PERMITTED = [case for case in CASES if not case.violates]
 MEMORY_ONLY = [case for case in CASES if case.name == "correct"]
 
 
@@ -143,7 +140,7 @@ def test_the_generation_moves_when_the_role_does(correct: BackendUnderTest) -> N
 # -- the arguments this refuses --------------------------------------------
 
 
-@pytest.mark.parametrize("ttl", [None, -1.0])
+@pytest.mark.parametrize("ttl", [None, 0, -1.0])
 @_on(MEMORY_ONLY)
 def test_an_address_without_a_future_expiry_is_refused(
     correct: BackendUnderTest, ttl: float | None

@@ -173,12 +173,12 @@ description the README at this entry's commit would become.
 ### A refusal that arrives late
 
 - **"And every one of its tests runs against four stores built wrong on
-  purpose"**, in the bullets under *A refusal that arrives late*,
-  from `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
-  test sweep removed the cases both of its readers and its plant passes showed
-  another kept case covers (#35). Each test of
-  `tests/test_postgres_killed_connection.py` now runs the correct store and the
-  stores that break its rule, and the bullet says so.
+  purpose"**, in the bullets under *A refusal that arrives late*, from
+  `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this
+  entry's commit leaves, where the test sweep removed the cases both of its
+  readers and its plant passes showed another kept case covers (#35). Each
+  test of `tests/test_postgres_killed_connection.py` now runs the correct
+  store and the stores that break its rule, and the bullet says so.
 
 ## AGENTS.md
 
@@ -786,28 +786,38 @@ cited a moved path are listed beside the docstrings.
   docstrings of `tests/test_lease.py`, `tests/test_pool.py`,
   `tests/test_publish.py` and `tests/test_addressing.py`, and **"What it runs
   against is every case declaring no violations"** in `tests/test_lease.py`,
-  all from `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
-  test sweep removed the cases both of its readers and its plant passes showed
-  another kept case covers (#35). `previous-version` runs
-  only the consumer tests a plant in its compare-and-set turned red, and a
-  test of the arguments runs the in-memory store alone.
+  all from `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the
+  tree this entry's commit leaves, where the test sweep removed the cases both
+  of its readers and its plant passes showed another kept case covers (#35).
+  `previous-version` runs only the consumer tests a plant in its
+  compare-and-set turned red, and a test of the arguments runs the in-memory
+  store alone.
 - **"each store in `_BUILDS` names the rules it breaks and is
   `xfail(strict=True)` against every test holding one"** and **"Run the test
   against every build"**, in `tests/test_postgres_killed_connection.py`, from
-  `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
-  test sweep removed the cases both of its readers and its plant passes showed
-  another kept case covers (#35). A test runs the correct build and
-  the builds that break its rule, and one named build beside them.
+  `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this
+  entry's commit leaves, where the test sweep removed the cases both of its
+  readers and its plant passes showed another kept case covers (#35). A test
+  runs the correct build and the builds that break its rule, and one named
+  build beside them.
 - **"What keeps it honest is the second test below"** and **"Calibrates the
   probe rather than the store, and must run first"**, in
   `tests/test_postgres_cross_process.py`, from `9ada7a1`
-  (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
-  test sweep removed the cases both of its readers and its plant passes showed
-  another kept case covers (#35). The harness test reads the correct store's
-  verdict from its own run, and the naive store's test is the last.
+  (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's
+  commit leaves, where the test sweep removed the cases both of its readers
+  and its plant passes showed another kept case covers (#35). The harness test
+  reads the correct store's verdict from its own run, and the naive store's
+  test is the last.
 - **"It is asserted twice -- once against raw `duckdb.connect` and once
   through `DuckDBStore`"**, in `tests/test_duckdb_single_process.py`, from
-  `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
-  test sweep removed the cases both of its readers and its plant passes showed
-  another kept case covers (#35). It is asserted against the engine,
-  beside its control.
+  `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this
+  entry's commit leaves, where the test sweep removed the cases both of its
+  readers and its plant passes showed another kept case covers (#35). It is
+  asserted against the engine, beside its control.
+- **"without it the two tests above prove far less"** and **"would satisfy
+  both assertions above"**, in the docstring of
+  `test_the_file_is_openable_once_this_process_lets_go` in
+  `tests/test_duckdb_single_process.py`, from `9ada7a1`
+  (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's
+  commit leaves, where one test of the refusal stands above it (#35). It now
+  says the test above, and its assertion.

@@ -102,10 +102,10 @@ def test_a_second_process_cannot_open_the_database_at_all(held_store) -> None:
 def test_the_file_is_openable_once_this_process_lets_go(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> None:
-    """The control, and without it the two tests above prove far less.
+    """The control, and without it the test above proves far less.
 
     A path that could never be opened by anyone -- a bad filename, a missing
-    directory, a permissions error -- would satisfy both assertions above while
+    directory, a permissions error -- would satisfy the assertion above while
     demonstrating nothing about DuckDB's concurrency model. This asserts the
     same child succeeds against the same path the moment the lock is released,
     which is what makes the refusal *exclusivity* rather than breakage.
