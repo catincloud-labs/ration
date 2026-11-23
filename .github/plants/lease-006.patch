@@ -1,0 +1,11 @@
+--- a/src/ration/lease.py
++++ b/src/ration/lease.py
+@@ -211,7 +211,7 @@
+     try:
+         outcome = store.compare_and_set(lease.key, lease.version, None)
+     except Ambiguous:
+-        return False
++        raise
+     return isinstance(outcome, Applied)
+ 
+ 

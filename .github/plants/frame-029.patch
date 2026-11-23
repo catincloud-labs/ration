@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -688,7 +688,7 @@
+         version, kind, value, length, crc = _HEADER.unpack_from(view)
+         refused = self.version_known(version)
+         if refused is not None:
+-            return refused
++            pass
+         refused = self.within_maximum(length, len(view))
+         if refused is not None:
+             return refused

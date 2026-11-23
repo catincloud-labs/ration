@@ -1,0 +1,11 @@
+--- a/src/ration/pool.py
++++ b/src/ration/pool.py
+@@ -83,7 +83,7 @@
+             # A pool of zero refuses everything, which is indistinguishable from
+             # a pool that is full and would hide a configuration mistake behind
+             # a plausible-looking refusal.
+-            raise ValueError(f"a pool needs at least one slot, got {self.capacity}")
++            pass
+ 
+     def slot(self, index: int) -> str:
+         """The key for one slot.

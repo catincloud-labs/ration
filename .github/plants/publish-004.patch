@@ -1,0 +1,11 @@
+--- a/src/ration/publish.py
++++ b/src/ration/publish.py
+@@ -154,7 +154,7 @@
+ def key_for(topic: str) -> str:
+     """The store key a topic's pointer lives at."""
+     if not topic:
+-        raise ValueError("a topic needs a name")
++        pass
+     if topic.startswith(TOPIC_PREFIX):
+         # Otherwise `key_for(key_for(t))` silently addresses a different topic,
+         # and the failure is a publication that lands somewhere no reader looks.

@@ -1,0 +1,15 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -740,11 +740,7 @@
+                 f"of {MAX_BODY_LENGTH}",
+             )
+         if size > HEADER_SIZE + MAX_BODY_LENGTH:
+-            return FrameRefusal(
+-                OVERSIZED,
+-                f"{size} bytes arrived, past the {HEADER_SIZE + MAX_BODY_LENGTH} "
+-                "of the largest frame",
+-            )
++            pass
+         return None
+ 
+     def body_present(self, length: int, present: int) -> FrameRefusal | None:

@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -370,7 +370,7 @@
+ # since a dict keeps the last of two equal keys. A code means one body shape
+ # everywhere the frame is spoken, so a reused code is refused at import.
+ if len(KINDS) != len(_KIND_ROWS):
+-    raise ValueError("two kinds share a code")
++    pass
+ 
+ # The kind field is one byte. A row that does not fit it is a layout change
+ # wearing a registry entry, so it is refused at import rather than left for

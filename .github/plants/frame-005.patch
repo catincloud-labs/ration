@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -427,7 +427,7 @@
+ # are one signal where the module states two. A set built from them would keep
+ # one and say nothing, so the spellings are checked at import.
+ if len(CONTROLS) != len(_CONTROL_NAMES):
+-    raise ValueError("two frame controls share a name")
++    pass
+ 
+ #: The text form's alphabet: base64url, RFC 4648 section 5, with no `=`.
+ _TEXT_ALPHABET = frozenset(

@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -703,7 +703,7 @@
+             return refused
+         refused = self.nothing_trailing(length, present)
+         if refused is not None:
+-            return refused
++            pass
+         refused = self.kind_known(kind)
+         if refused is not None:
+             return refused

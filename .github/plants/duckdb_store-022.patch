@@ -1,0 +1,11 @@
+--- a/src/ration/duckdb_store.py
++++ b/src/ration/duckdb_store.py
+@@ -276,7 +276,7 @@
+             try:
+                 self._conn.close()
+             except duckdb.Error:
+-                pass
++                raise
+         self._conn = None
+         self._conn_path = None
+         self._local = threading.local()

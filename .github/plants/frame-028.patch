@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -684,7 +684,7 @@
+         view = memoryview(data).cast("B")
+         refused = self.header_present(view)
+         if refused is not None:
+-            return refused
++            pass
+         version, kind, value, length, crc = _HEADER.unpack_from(view)
+         refused = self.version_known(version)
+         if refused is not None:

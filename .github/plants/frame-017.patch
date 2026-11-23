@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -576,7 +576,7 @@
+         if not isinstance(sequence, Sequence):
+             raise TypeError("sequence must be a Sequence")
+         if not isinstance(body, (bytes, bytearray, memoryview)):
+-            raise TypeError("body must be bytes")
++            pass
+         body = bytes(body)
+         if len(body) > MAX_BODY_LENGTH:
+             raise ValueError(

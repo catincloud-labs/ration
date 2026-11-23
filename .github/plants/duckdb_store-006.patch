@@ -1,0 +1,14 @@
+--- a/src/ration/duckdb_store.py
++++ b/src/ration/duckdb_store.py
+@@ -273,10 +273,7 @@
+ 
+     def _close_locked(self) -> None:
+         if self._conn is not None:
+-            try:
+-                self._conn.close()
+-            except duckdb.Error:
+-                pass
++            pass
+         self._conn = None
+         self._conn_path = None
+         self._local = threading.local()

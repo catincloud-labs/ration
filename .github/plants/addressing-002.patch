@@ -1,0 +1,11 @@
+--- a/src/ration/addressing.py
++++ b/src/ration/addressing.py
+@@ -76,7 +76,7 @@
+     if role.startswith(ROLE_PREFIX):
+         # Otherwise `key_for(key_for(r))` silently addresses a different role,
+         # and the failure is a lookup that succeeds against the wrong thing.
+-        raise ValueError(f"role {role!r} is already a role key")
++        pass
+     return f"{ROLE_PREFIX}{role}"
+ 
+ 

@@ -1,0 +1,11 @@
+--- a/src/ration/postgres.py
++++ b/src/ration/postgres.py
+@@ -259,7 +259,7 @@
+                 # returned. A caller that cannot reach the store has acquired
+                 # nothing, and the one wrong thing to do here is hand back
+                 # something that reads like an answer.
+-                raise Unreachable(str(exc)) from exc
++                raise
+             self._local.conn = conn
+             self._local.dsn = dsn
+         return conn, reused

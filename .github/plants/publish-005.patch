@@ -1,0 +1,11 @@
+--- a/src/ration/publish.py
++++ b/src/ration/publish.py
+@@ -158,7 +158,7 @@
+     if topic.startswith(TOPIC_PREFIX):
+         # Otherwise `key_for(key_for(t))` silently addresses a different topic,
+         # and the failure is a publication that lands somewhere no reader looks.
+-        raise ValueError(f"topic {topic!r} is already a topic key")
++        pass
+     return f"{TOPIC_PREFIX}{topic}"
+ 
+ 

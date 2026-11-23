@@ -1,0 +1,11 @@
+--- a/src/ration/addressing.py
++++ b/src/ration/addressing.py
+@@ -101,7 +101,7 @@
+     store that cannot be reached must not read as a role that is free.
+     """
+     if ttl is None or ttl <= 0:
+-        raise ValueError("an address needs an expiry; see this function's docstring")
++        pass
+     if not endpoint:
+         raise ValueError("a role needs somewhere to be")
+     return acquire(

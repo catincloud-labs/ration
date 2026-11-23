@@ -1,0 +1,11 @@
+--- a/src/ration/postgres.py
++++ b/src/ration/postgres.py
+@@ -200,7 +200,7 @@
+         version, payload, token = row
+         if payload is None:
+             # Deleted, or expired. Both are absence, and both keep the version.
+-            return Reading(version, None)
++            pass
+         return Reading(version, Record(payload=bytes(payload), token=token))
+ 
+     def compare_and_set(

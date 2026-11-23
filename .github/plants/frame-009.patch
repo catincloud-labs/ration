@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -533,7 +533,7 @@
+         if last is None:
+             # Nothing to compare against; this frame becomes the baseline. The
+             # cost is stated in the module docstring.
+-            return None
++            pass
+         if sequence.epoch > last.epoch:
+             if sequence.count == 0:
+                 return None

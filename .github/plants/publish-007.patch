@@ -1,0 +1,11 @@
+--- a/src/ration/publish.py
++++ b/src/ration/publish.py
+@@ -196,7 +196,7 @@
+     try:
+         outcome = store.compare_and_set(key, generation, record, ttl=None)
+     except Ambiguous:
+-        return _resolve_publication(store, topic, artefact, publisher, generation)
++        raise
+ 
+     if isinstance(outcome, Applied):
+         return Publication(topic, publisher, outcome.version, artefact)

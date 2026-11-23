@@ -1,0 +1,13 @@
+--- a/src/ration/duckdb_store.py
++++ b/src/ration/duckdb_store.py
+@@ -266,9 +266,7 @@
+             conn = self._conn
+         cursor = getattr(self._local, "cursor", None)
+         if cursor is None or getattr(self._local, "path", None) != path:
+-            cursor = conn.cursor()
+-            self._local.cursor = cursor
+-            self._local.path = path
++            pass
+         return cursor
+ 
+     def _close_locked(self) -> None:

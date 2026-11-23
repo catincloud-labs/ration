@@ -1,0 +1,11 @@
+--- a/src/ration/lease.py
++++ b/src/ration/lease.py
+@@ -176,7 +176,7 @@
+     ever held twice. The moment someone does acquire, the version moves and this
+     returns `None`.
+     """
+-    extended = replace(lease, ttl=lease.ttl if ttl is None else ttl)
++    extended = replace(lease, ttl=(lease.ttl))
+     try:
+         outcome = store.compare_and_set(
+             lease.key, lease.version, extended._record(), ttl=extended.ttl

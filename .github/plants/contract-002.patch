@@ -1,0 +1,9 @@
+--- a/src/ration/contract.py
++++ b/src/ration/contract.py
+@@ -244,5 +244,5 @@
+         # sitting there from a write that landed before the one being resolved.
+         return Resolution.NOT_APPLIED
+     if reading.record is not None and reading.record.token == token:
+-        return Resolution.APPLIED
++        pass
+     return Resolution.SUPERSEDED

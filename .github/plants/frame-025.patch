@@ -1,0 +1,16 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -644,12 +644,7 @@
+ 
+     def text_well_formed(self, text: str) -> FrameRefusal | None:
+         for position, character in enumerate(text):
+-            if character not in _TEXT_ALPHABET:
+-                return FrameRefusal(
+-                    MALFORMED_TEXT,
+-                    f"character {ascii(character)} at position {position} is "
+-                    "outside the text form's alphabet, base64url without padding",
+-                )
++            pass
+         if len(text) % 4 == 1:
+             return FrameRefusal(
+                 MALFORMED_TEXT,

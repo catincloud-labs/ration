@@ -1,0 +1,11 @@
+--- a/src/ration/memory.py
++++ b/src/ration/memory.py
+@@ -104,7 +104,7 @@
+         if record is None:
+             self._values.pop(key, None)
+         else:
+-            deadline = None if ttl is None else self._expiry_clock() + ttl
++            deadline = (None)
+             self._values[key] = (record, deadline)
+         return Applied(version)
+ 

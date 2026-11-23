@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -624,7 +624,7 @@
+             return refused
+         refused = self.text_well_formed(text)
+         if refused is not None:
+-            return refused
++            pass
+         # Every character is in the alphabet and the length holds whole bytes,
+         # so the padding restored here is exact and nothing is dropped.
+         data = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))

@@ -1,0 +1,16 @@
+--- a/tests/test_ascii_only.py
++++ b/tests/test_ascii_only.py
+@@ -81,12 +81,7 @@
+         try:
+             line = raw.decode("utf-8")
+         except UnicodeDecodeError:
+-            shown = ", ".join(
+-                f"0x{byte:02X} at byte {start + i}"
+-                for i, byte in enumerate(raw)
+-                if byte > 127
+-            )
+-            offenders.append(f"{name}:{lineno}: {shown} (not UTF-8)")
++            raise
+         else:
+             bad = {c for c in line if ord(c) > 127}
+             if bad:

@@ -1,0 +1,19 @@
+--- a/src/ration/duckdb_store.py
++++ b/src/ration/duckdb_store.py
+@@ -254,15 +254,7 @@
+             if self._conn is not None and self._conn_path != path:
+                 self._close_locked()
+             if self._conn is None:
+-                try:
+-                    self._conn = duckdb.connect(path)
+-                except (duckdb.IOException, duckdb.Error) as exc:
+-                    # Property 3. A caller that cannot open the store has
+-                    # acquired nothing, and the one wrong thing to do is hand
+-                    # back something that reads like an answer.
+-                    raise Unreachable(str(exc)) from exc
+-                self._conn_path = path
+-                self._local = threading.local()
++                pass
+             conn = self._conn
+         cursor = getattr(self._local, "cursor", None)
+         if cursor is None or getattr(self._local, "path", None) != path:

@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -385,7 +385,7 @@
+ # nothing about two codes with one name, so the names are checked here, at
+ # import, for the same reason as the byte check above.
+ if len(set(KINDS.values())) != len(KINDS):
+-    raise ValueError("two kind codes share a name")
++    pass
+ 
+ # The closed control set a decode can refuse with. `tests/test_frame.py` holds
+ # it apart from a consumer envelope decoder's, because a CRC failure and a

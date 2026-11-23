@@ -1,0 +1,11 @@
+--- a/src/ration/duckdb_store.py
++++ b/src/ration/duckdb_store.py
+@@ -175,7 +175,7 @@
+         *,
+         ttl: float | None = None,
+     ) -> Outcome:
+-        payload = record.payload if record is not None else None
++        payload = (record.payload)
+         token = record.token if record is not None else None
+         try:
+             if expected_version == ABSENT:

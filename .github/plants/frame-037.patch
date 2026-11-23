@@ -1,0 +1,14 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -725,10 +725,7 @@
+ 
+     def version_known(self, version: int) -> FrameRefusal | None:
+         if version != FRAME_VERSION:
+-            return FrameRefusal(
+-                UNKNOWN_FRAME_VERSION,
+-                f"frame version {version} is not the known version {FRAME_VERSION}",
+-            )
++            pass
+         return None
+ 
+     def within_maximum(self, length: int, size: int) -> FrameRefusal | None:

@@ -1,0 +1,11 @@
+--- a/src/ration/pool.py
++++ b/src/ration/pool.py
+@@ -154,7 +154,7 @@
+         if reading.record.token == holder:
+             # Already ours, somewhere in the pool. Hand back the grant that
+             # exists rather than issuing a second one.
+-            return Lease(key, holder, reading.version, ttl, reading.record.payload)
++            pass
+ 
+     if free is None:
+         return None

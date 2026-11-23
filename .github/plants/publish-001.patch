@@ -1,0 +1,11 @@
+--- a/src/ration/publish.py
++++ b/src/ration/publish.py
+@@ -118,7 +118,7 @@
+ # topic whose key began with `ROLE_PREFIX` would be read back as a role. So the
+ # two are checked at import, with a `raise` that `python -O` cannot strip.
+ if TOPIC_PREFIX.startswith(ROLE_PREFIX) or ROLE_PREFIX.startswith(TOPIC_PREFIX):
+-    raise ValueError("the topic and role key prefixes must not nest")
++    pass
+ 
+ #: The generation of a topic never published. Absence is a version -- the
+ #: contract's `ABSENT` -- which is what makes the first publication an ordinary

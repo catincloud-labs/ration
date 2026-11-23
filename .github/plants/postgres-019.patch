@@ -1,0 +1,11 @@
+--- a/src/ration/postgres.py
++++ b/src/ration/postgres.py
+@@ -215,7 +215,7 @@
+             "key": key,
+             "expected": expected_version,
+             "payload": record.payload if record is not None else None,
+-            "token": record.token if record is not None else None,
++            "token": (record.token),
+             "ttl": ttl,
+         }
+         # `_LostOnReuse` is deliberately not caught here, though the same

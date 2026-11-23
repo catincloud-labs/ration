@@ -1,0 +1,11 @@
+--- a/src/ration/memory.py
++++ b/src/ration/memory.py
+@@ -93,7 +93,7 @@
+             # Evaluated here, on read, against the store's clock. The entry is
+             # left in place rather than reaped: expiry is a predicate over the
+             # clock, and a background reaper would make it a race instead.
+-            return Reading(version, None)
++            pass
+         return Reading(version, record)
+ 
+     def _commit_locked(

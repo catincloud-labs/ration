@@ -1,0 +1,13 @@
+--- a/src/ration/postgres.py
++++ b/src/ration/postgres.py
+@@ -290,9 +290,4 @@
+             # Property 4 covers the narrower case where the write may already
+             # have applied. The suite injects that case directly rather than
+             # hoping a connection drops at exactly the right instant.
+-            self._discard()
+-            # Or it was lost long before the statement and this is only when
+-            # the client found out, which a reused connection cannot rule out.
+-            # Said in the type, and decided by the caller: see `read()`.
+-            refusal = _LostOnReuse if reused else Unreachable
+-            raise refusal(str(exc)) from exc
++            raise

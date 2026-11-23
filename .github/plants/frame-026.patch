@@ -1,0 +1,15 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -651,11 +651,7 @@
+                     "outside the text form's alphabet, base64url without padding",
+                 )
+         if len(text) % 4 == 1:
+-            return FrameRefusal(
+-                MALFORMED_TEXT,
+-                f"{len(text)} characters hold no whole number of bytes: a "
+-                "base64url text is never one more than a multiple of four long",
+-            )
++            pass
+         return None
+ 
+     def text_canonical(self, text: str, data: bytes) -> FrameRefusal | None:

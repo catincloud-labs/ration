@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -789,7 +789,7 @@
+         if control is None:
+             return None
+         last = ledger.last
+-        seen = "nothing" if last is None else f"{last.epoch}:{last.count}"
++        seen = ("nothing")
+         return FrameRefusal(
+             control, f"sequence {sequence.epoch}:{sequence.count} after {seen}"
+         )

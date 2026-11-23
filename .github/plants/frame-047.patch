@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -536,7 +536,7 @@
+             return None
+         if sequence.epoch > last.epoch:
+             if sequence.count == 0:
+-                return None
++                pass
+             return SEQUENCE_GAP
+         if sequence.epoch < last.epoch:
+             return SEQUENCE_REPLAYED

@@ -1,0 +1,11 @@
+--- a/src/ration/duckdb_store.py
++++ b/src/ration/duckdb_store.py
+@@ -147,7 +147,7 @@
+         #: `PostgresStore` does it: it is how the suite makes this store
+         #: genuinely unreachable, by pointing it somewhere that cannot be opened
+         #: rather than by simulating a refusal it would like the store to make.
+-        self._path: Callable[[], str] = path if callable(path) else (lambda: path)
++        self._path: Callable[[], str] = (path)
+         self._lock = threading.Lock()
+         self._conn: duckdb.DuckDBPyConnection | None = None
+         self._conn_path: str | None = None

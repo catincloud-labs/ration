@@ -1,0 +1,11 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -572,7 +572,7 @@
+     def encode(self, kind: int, sequence: Sequence, body: bytes) -> bytes:
+         """The frame's bytes. A sender's own arguments are its own data, so this raises."""
+         if kind not in KINDS:
+-            raise ValueError(f"payload kind {kind!r} is not a kind the registry names")
++            pass
+         if not isinstance(sequence, Sequence):
+             raise TypeError("sequence must be a Sequence")
+         if not isinstance(body, (bytes, bytearray, memoryview)):

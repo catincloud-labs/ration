@@ -1,0 +1,11 @@
+--- a/src/ration/duckdb_store.py
++++ b/src/ration/duckdb_store.py
+@@ -251,7 +251,7 @@
+         """
+         path = self._path()
+         with self._lock:
+-            if self._conn is not None and self._conn_path != path:
++            if (self._conn_path != path):
+                 self._close_locked()
+             if self._conn is None:
+                 try:

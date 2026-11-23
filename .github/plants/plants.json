@@ -1,0 +1,927 @@
+[
+ {
+  "id": "addressing-001",
+  "where": "src/ration/addressing.py:74",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "addressing-002",
+  "where": "src/ration/addressing.py:76",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "addressing-003",
+  "where": "src/ration/addressing.py:103",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "addressing-004",
+  "where": "src/ration/addressing.py:105",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "addressing-005",
+  "where": "src/ration/addressing.py:125",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "addressing-006",
+  "where": "src/ration/addressing.py:103",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "addressing-007",
+  "where": "src/ration/addressing.py:103",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "contract-001",
+  "where": "src/ration/contract.py:241",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "contract-002",
+  "where": "src/ration/contract.py:246",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "contract-003",
+  "where": "src/ration/contract.py:246",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "contract-004",
+  "where": "src/ration/contract.py:246",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "duckdb_store-001",
+  "where": "src/ration/duckdb_store.py:160",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "duckdb_store-002",
+  "where": "src/ration/duckdb_store.py:165",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "duckdb_store-003",
+  "where": "src/ration/duckdb_store.py:189",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "duckdb_store-004",
+  "where": "src/ration/duckdb_store.py:216",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "duckdb_store-005",
+  "where": "src/ration/duckdb_store.py:268",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "duckdb_store-006",
+  "where": "src/ration/duckdb_store.py:275",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "duckdb_store-007",
+  "where": "src/ration/duckdb_store.py:297",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "duckdb_store-008",
+  "where": "src/ration/duckdb_store.py:150",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "duckdb_store-009",
+  "where": "src/ration/duckdb_store.py:150",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "duckdb_store-010",
+  "where": "src/ration/duckdb_store.py:178",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "duckdb_store-011",
+  "where": "src/ration/duckdb_store.py:178",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "duckdb_store-012",
+  "where": "src/ration/duckdb_store.py:179",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "duckdb_store-013",
+  "where": "src/ration/duckdb_store.py:179",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "duckdb_store-014",
+  "where": "src/ration/duckdb_store.py:181",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "duckdb_store-015",
+  "where": "src/ration/duckdb_store.py:186",
+  "what": "else-body deleted"
+ },
+ {
+  "id": "duckdb_store-016",
+  "where": "src/ration/duckdb_store.py:242",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "duckdb_store-017",
+  "where": "src/ration/duckdb_store.py:242",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "duckdb_store-018",
+  "where": "src/ration/duckdb_store.py:254",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "duckdb_store-019",
+  "where": "src/ration/duckdb_store.py:256",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "duckdb_store-020",
+  "where": "src/ration/duckdb_store.py:268",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "duckdb_store-021",
+  "where": "src/ration/duckdb_store.py:268",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "duckdb_store-022",
+  "where": "src/ration/duckdb_store.py:278",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "duckdb_store-023",
+  "where": "src/ration/duckdb_store.py:254",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "duckdb_store-024",
+  "where": "src/ration/duckdb_store.py:254",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "duckdb_store-025",
+  "where": "src/ration/duckdb_store.py:259",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "duckdb_store-026",
+  "where": "src/ration/duckdb_store.py:292",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "duckdb_store-027",
+  "where": "src/ration/duckdb_store.py:292",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "frame-001",
+  "where": "src/ration/frame.py:297",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-002",
+  "where": "src/ration/frame.py:372",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-003",
+  "where": "src/ration/frame.py:380",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-004",
+  "where": "src/ration/frame.py:387",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-005",
+  "where": "src/ration/frame.py:429",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-006",
+  "where": "src/ration/frame.py:440",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-007",
+  "where": "src/ration/frame.py:471",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "frame-008",
+  "where": "src/ration/frame.py:497",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-009",
+  "where": "src/ration/frame.py:533",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-010",
+  "where": "src/ration/frame.py:537",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-011",
+  "where": "src/ration/frame.py:541",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-012",
+  "where": "src/ration/frame.py:543",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-013",
+  "where": "src/ration/frame.py:545",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-014",
+  "where": "src/ration/frame.py:547",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-015",
+  "where": "src/ration/frame.py:574",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-016",
+  "where": "src/ration/frame.py:576",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-017",
+  "where": "src/ration/frame.py:578",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-018",
+  "where": "src/ration/frame.py:581",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-019",
+  "where": "src/ration/frame.py:609",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-020",
+  "where": "src/ration/frame.py:612",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-021",
+  "where": "src/ration/frame.py:623",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-022",
+  "where": "src/ration/frame.py:626",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-023",
+  "where": "src/ration/frame.py:632",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-024",
+  "where": "src/ration/frame.py:637",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-025",
+  "where": "src/ration/frame.py:646",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "frame-026",
+  "where": "src/ration/frame.py:653",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-027",
+  "where": "src/ration/frame.py:662",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-028",
+  "where": "src/ration/frame.py:686",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-029",
+  "where": "src/ration/frame.py:690",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-030",
+  "where": "src/ration/frame.py:693",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-031",
+  "where": "src/ration/frame.py:698",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-032",
+  "where": "src/ration/frame.py:702",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-033",
+  "where": "src/ration/frame.py:705",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-034",
+  "where": "src/ration/frame.py:708",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-035",
+  "where": "src/ration/frame.py:712",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-036",
+  "where": "src/ration/frame.py:718",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-037",
+  "where": "src/ration/frame.py:727",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-038",
+  "where": "src/ration/frame.py:736",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-039",
+  "where": "src/ration/frame.py:742",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-040",
+  "where": "src/ration/frame.py:751",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-041",
+  "where": "src/ration/frame.py:762",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-042",
+  "where": "src/ration/frame.py:770",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-043",
+  "where": "src/ration/frame.py:778",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-044",
+  "where": "src/ration/frame.py:789",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-045",
+  "where": "src/ration/frame.py:472",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-046",
+  "where": "src/ration/frame.py:474",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-047",
+  "where": "src/ration/frame.py:538",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-048",
+  "where": "src/ration/frame.py:647",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "frame-049",
+  "where": "src/ration/frame.py:792",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "frame-050",
+  "where": "src/ration/frame.py:792",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "frame-051",
+  "where": "src/ration/frame.py:472",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "frame-052",
+  "where": "src/ration/frame.py:472",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "lease-001",
+  "where": "src/ration/lease.py:139",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "lease-002",
+  "where": "src/ration/lease.py:151",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "lease-003",
+  "where": "src/ration/lease.py:154",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "lease-004",
+  "where": "src/ration/lease.py:184",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "lease-005",
+  "where": "src/ration/lease.py:187",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "lease-006",
+  "where": "src/ration/lease.py:213",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "lease-007",
+  "where": "src/ration/lease.py:233",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "lease-008",
+  "where": "src/ration/lease.py:237",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "lease-009",
+  "where": "src/ration/lease.py:140",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "lease-010",
+  "where": "src/ration/lease.py:237",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "lease-011",
+  "where": "src/ration/lease.py:237",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "lease-012",
+  "where": "src/ration/lease.py:179",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "lease-013",
+  "where": "src/ration/lease.py:179",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "memory-001",
+  "where": "src/ration/memory.py:89",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "memory-002",
+  "where": "src/ration/memory.py:92",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "memory-003",
+  "where": "src/ration/memory.py:104",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "memory-004",
+  "where": "src/ration/memory.py:107",
+  "what": "else-body deleted"
+ },
+ {
+  "id": "memory-005",
+  "where": "src/ration/memory.py:45",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "memory-006",
+  "where": "src/ration/memory.py:45",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "memory-007",
+  "where": "src/ration/memory.py:67",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "memory-008",
+  "where": "src/ration/memory.py:92",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "memory-009",
+  "where": "src/ration/memory.py:92",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "memory-010",
+  "where": "src/ration/memory.py:107",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "memory-011",
+  "where": "src/ration/memory.py:107",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "pool-001",
+  "where": "src/ration/pool.py:145",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "pool-002",
+  "where": "src/ration/pool.py:159",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "pool-003",
+  "where": "src/ration/pool.py:185",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "pool-004",
+  "where": "src/ration/pool.py:82",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "pool-005",
+  "where": "src/ration/pool.py:149",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "pool-006",
+  "where": "src/ration/pool.py:154",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "pool-007",
+  "where": "src/ration/pool.py:187",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "pool-008",
+  "where": "src/ration/pool.py:150",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "postgres-001",
+  "where": "src/ration/postgres.py:182",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "postgres-002",
+  "where": "src/ration/postgres.py:196",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "postgres-003",
+  "where": "src/ration/postgres.py:201",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "postgres-004",
+  "where": "src/ration/postgres.py:250",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "postgres-005",
+  "where": "src/ration/postgres.py:254",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "postgres-006",
+  "where": "src/ration/postgres.py:270",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "postgres-007",
+  "where": "src/ration/postgres.py:284",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "postgres-008",
+  "where": "src/ration/postgres.py:173",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "postgres-009",
+  "where": "src/ration/postgres.py:173",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "postgres-010",
+  "where": "src/ration/postgres.py:229",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "postgres-011",
+  "where": "src/ration/postgres.py:229",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "postgres-012",
+  "where": "src/ration/postgres.py:250",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "postgres-013",
+  "where": "src/ration/postgres.py:250",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "postgres-014",
+  "where": "src/ration/postgres.py:257",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "postgres-015",
+  "where": "src/ration/postgres.py:273",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "postgres-016",
+  "where": "src/ration/postgres.py:217",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "postgres-017",
+  "where": "src/ration/postgres.py:217",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "postgres-018",
+  "where": "src/ration/postgres.py:218",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "postgres-019",
+  "where": "src/ration/postgres.py:218",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "postgres-020",
+  "where": "src/ration/postgres.py:250",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "postgres-021",
+  "where": "src/ration/postgres.py:250",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "postgres-022",
+  "where": "src/ration/postgres.py:297",
+  "what": "ifexp true-arm deleted"
+ },
+ {
+  "id": "postgres-023",
+  "where": "src/ration/postgres.py:297",
+  "what": "ifexp false-arm deleted"
+ },
+ {
+  "id": "publish-001",
+  "where": "src/ration/publish.py:120",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "publish-002",
+  "where": "src/ration/publish.py:120",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "publish-003",
+  "where": "src/ration/publish.py:120",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "publish-004",
+  "where": "src/ration/publish.py:156",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "publish-005",
+  "where": "src/ration/publish.py:158",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "publish-006",
+  "where": "src/ration/publish.py:192",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "publish-007",
+  "where": "src/ration/publish.py:198",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "publish-008",
+  "where": "src/ration/publish.py:201",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "publish-009",
+  "where": "src/ration/publish.py:218",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "publish-010",
+  "where": "src/ration/publish.py:251",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "publish-011",
+  "where": "src/ration/publish.py:255",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "publish-012",
+  "where": "src/ration/publish.py:256",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "publish-013",
+  "where": "src/ration/publish.py:257",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "publish-014",
+  "where": "src/ration/publish.py:258",
+  "what": "boolop operand 3 deleted"
+ },
+ {
+  "id": "test_ascii_only-001",
+  "where": "tests/test_ascii_only.py:76",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "test_ascii_only-002",
+  "where": "tests/test_ascii_only.py:80",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "test_ascii_only-003",
+  "where": "tests/test_ascii_only.py:118",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "test_ascii_only-004",
+  "where": "tests/test_ascii_only.py:139",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "test_ascii_only-005",
+  "where": "tests/test_ascii_only.py:159",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "test_ascii_only-006",
+  "where": "tests/test_ascii_only.py:83",
+  "what": "except-handler deleted (re-raises)"
+ },
+ {
+  "id": "test_ascii_only-007",
+  "where": "tests/test_ascii_only.py:172",
+  "what": "loop-body deleted"
+ },
+ {
+  "id": "test_ascii_only-008",
+  "where": "tests/test_ascii_only.py:92",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "test_ascii_only-009",
+  "where": "tests/test_ascii_only.py:140",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "test_ascii_only-010",
+  "where": "tests/test_ascii_only.py:140",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "test_ascii_only-011",
+  "where": "tests/test_ascii_only.py:173",
+  "what": "if-body deleted"
+ },
+ {
+  "id": "test_ascii_only-012",
+  "where": "tests/test_ascii_only.py:174",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "test_ascii_only-013",
+  "where": "tests/test_ascii_only.py:175",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "test_ascii_only-014",
+  "where": "tests/test_ascii_only.py:176",
+  "what": "boolop operand 3 deleted"
+ },
+ {
+  "id": "test_ascii_only-015",
+  "where": "tests/test_ascii_only.py:177",
+  "what": "boolop operand 4 deleted"
+ },
+ {
+  "id": "test_ascii_only-016",
+  "where": "tests/test_ascii_only.py:164",
+  "what": "boolop operand 1 deleted"
+ },
+ {
+  "id": "test_ascii_only-017",
+  "where": "tests/test_ascii_only.py:167",
+  "what": "boolop operand 2 deleted"
+ },
+ {
+  "id": "test_ascii_only-018",
+  "where": "tests/test_ascii_only.py:168",
+  "what": "boolop operand 3 deleted"
+ },
+ {
+  "id": "test_ascii_only-019",
+  "where": "tests/test_ascii_only.py:169",
+  "what": "boolop operand 4 deleted"
+ },
+ {
+  "id": "test_ascii_only-020",
+  "where": "tests/test_ascii_only.py:170",
+  "what": "boolop operand 5 deleted"
+ },
+ {
+  "id": "hand-ascii-message",
+  "where": "src/ration/publish.py:157",
+  "what": "a non-ASCII character in a runtime message",
+  "edit": {
+   "file": "src/ration/publish.py",
+   "old": "\"a topic needs a name\"",
+   "new": "\"a topic needs a name \u2014\""
+  }
+ },
+ {
+  "id": "hand-ascii-metadata",
+  "where": "pyproject.toml:12",
+  "what": "a non-ASCII character in the package summary",
+  "edit": {
+   "file": "pyproject.toml",
+   "old": "granted for a period",
+   "new": "granted for a period \u2014"
+  }
+ },
+ {
+  "id": "hand-empty-property",
+  "where": "src/ration/conformance/support/backends.py:328",
+  "what": "a violator declares an empty property name",
+  "edit": {
+   "file": "src/ration/conformance/support/backends.py",
+   "old": "_memory_case(\"naive\", {\"atomicity\"}, NaiveStore)",
+   "new": "_memory_case(\"naive\", {\"atomicity\", \"\"}, NaiveStore)"
+  }
+ }
+]

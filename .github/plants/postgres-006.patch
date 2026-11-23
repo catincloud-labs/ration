@@ -1,0 +1,14 @@
+--- a/src/ration/postgres.py
++++ b/src/ration/postgres.py
+@@ -268,10 +268,7 @@
+         """Drop this thread's connection. A broken one must not be handed out again."""
+         conn: psycopg.Connection[Any] | None = getattr(self._local, "conn", None)
+         if conn is not None:
+-            try:
+-                conn.close()
+-            except psycopg.Error:
+-                pass
++            pass
+         self._local.conn = None
+         self._local.dsn = None
+ 

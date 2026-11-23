@@ -1,0 +1,14 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -768,10 +768,7 @@
+ 
+     def nothing_trailing(self, length: int, present: int) -> FrameRefusal | None:
+         if present > length:
+-            return FrameRefusal(
+-                TRAILING_BYTES,
+-                f"{present - length} bytes follow the declared body of {length}",
+-            )
++            pass
+         return None
+ 
+     def kind_known(self, kind: int) -> FrameRefusal | None:

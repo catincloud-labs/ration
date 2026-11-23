@@ -1,0 +1,15 @@
+--- a/src/ration/frame.py
++++ b/src/ration/frame.py
+@@ -749,11 +749,7 @@
+ 
+     def body_present(self, length: int, present: int) -> FrameRefusal | None:
+         if present < length:
+-            return FrameRefusal(
+-                TRUNCATED,
+-                f"truncated mid-body: the header declares {length} body bytes "
+-                f"and {present} are present",
+-            )
++            pass
+         return None
+ 
+     def integrity(
