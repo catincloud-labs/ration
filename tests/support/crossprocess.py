@@ -24,7 +24,6 @@ __all__ = [
     "STORES",
     "announce_role",
     "duckdb_open_attempt",
-    "duckdb_store_attempt",
     "increment",
     "renew_with_version",
     "resolve_role",
@@ -103,20 +102,6 @@ def duckdb_open_attempt(path: str) -> tuple[int, str]:
         return os.getpid(), "OPENED"
     finally:
         con.close()
-
-
-def duckdb_store_attempt(path: str) -> tuple[int, str]:
-    """The same question, asked through `DuckDBStore`, so the two can be compared."""
-    from ration.contract import Unreachable  # noqa: PLC0415
-    from ration.duckdb_store import DuckDBStore  # noqa: PLC0415
-
-    try:
-        DuckDBStore(path).read("probe")
-    except Unreachable as exc:
-        return os.getpid(), f"UNREACHABLE {exc}"
-    except BaseException as exc:  # noqa: BLE001 -- carried home as text
-        return os.getpid(), f"RAISED {type(exc).__name__}: {exc}"
-    return os.getpid(), "READ"
 
 
 def worker_result(args: tuple[str, str, str, int, int]) -> tuple[int, str | None]:

@@ -26,7 +26,7 @@ process and therefore cannot inherit that blindness.
 
 **It remains a probe.** It has no seam to park in either, so a run that finds
 nothing has not shown there was nothing to find. What keeps it honest is the
-second test below: the identical harness is pointed at `postgres-naive` and is
+last test below: the identical harness is pointed at `postgres-naive` and is
 required to catch it. A probe that has never been shown to fail is a probe that
 has been shown nothing.
 """
@@ -94,29 +94,21 @@ def _contend(store_kind: str, key: str) -> tuple[int, set[int], float]:
 
 
 def test_the_harness_really_used_separate_interpreters() -> None:
-    """Calibrates the probe rather than the store, and must run first.
+    """Calibrates the probe, then reads the correct store's verdict from the same run.
 
     A pool that quietly ran every task in the parent would produce a perfect
     counter and prove nothing at all -- the threaded hammer's result wearing
-    this test's name. So the distinct-PID count is asserted before any verdict
-    about a store is trusted.
+    this test's name. So the distinct-PID count is asserted before the verdict
+    about the store is read.
     """
     key = f"xproc-harness-{time.time_ns()}"
     _seed(key)
-    total, pids, _ = _contend("postgres", key)
+    total, pids, elapsed = _contend("postgres", key)
 
     assert len(pids) == PROCESSES, (
         f"expected {PROCESSES} distinct worker processes and saw {len(pids)}: "
         f"{sorted(pids)}. A probe that did not fork is not this probe."
     )
-    assert total == PROCESSES * ITERATIONS
-
-
-def test_the_correct_store_loses_nothing_across_processes() -> None:
-    key = f"xproc-correct-{time.time_ns()}"
-    _seed(key)
-    total, pids, elapsed = _contend("postgres", key)
-
     expected = PROCESSES * ITERATIONS
     assert total == expected, (
         f"{expected - total} increments were applied and then lost across "

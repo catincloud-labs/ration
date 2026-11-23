@@ -1,4 +1,4 @@
-"""Role addressing, against every store that is not a violator.
+"""Role addressing, against the stores that are not violators.
 
 Not conformance tests. Addressing states no new contract property -- it is a
 *consumer* of the lease, and the lease is a consumer of the contract. What these
@@ -19,10 +19,26 @@ import pytest
 
 from ration.addressing import Address, announce, key_for, resolve
 from ration.lease import release
-from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
+from ration.conformance.support.backends import REAL_TTL, BackendUnderTest, Case
 from tests.cases import CASES
 
-CORRECT_CASES = [case for case in CASES if not case.violates]
+#: The stores these tests run against: every registered store expected to be
+#: correct, other than `previous-version`. Filtered rather than listed, so a
+#: store added to the registry is exercised here without this file changing.
+#: A test of the arguments, decided before a store is reached, runs the
+#: in-memory store alone (`MEMORY_ONLY`).
+#: The plant passes behind that split are recorded on #35.
+CORRECT_CASES = [
+    case for case in CASES if not case.violates and case.name != "previous-version"
+]
+MEMORY_ONLY = [case for case in CASES if case.name == "correct"]
+
+
+def _on(cases: list[Case]) -> pytest.MarkDecorator:
+    """Run one test against `cases` in place of the `correct` fixture's own list."""
+    return pytest.mark.parametrize(
+        "correct", cases, ids=[case.name for case in cases], indirect=True
+    )
 
 
 @pytest.fixture(params=CORRECT_CASES, ids=[case.name for case in CORRECT_CASES])
@@ -125,6 +141,7 @@ def test_the_generation_moves_when_the_role_does(correct: BackendUnderTest) -> N
 
 
 @pytest.mark.parametrize("ttl", [None, 0, -1.0])
+@_on(MEMORY_ONLY)
 def test_an_address_without_a_future_expiry_is_refused(
     correct: BackendUnderTest, ttl: float | None
 ) -> None:
@@ -132,6 +149,7 @@ def test_an_address_without_a_future_expiry_is_refused(
         announce(correct.store, correct.key(), "node-a.example:8080", "producer", ttl=ttl)  # type: ignore[arg-type]
 
 
+@_on(MEMORY_ONLY)
 def test_a_role_without_a_name_or_an_endpoint_is_refused(
     correct: BackendUnderTest,
 ) -> None:

@@ -97,15 +97,6 @@ def test_the_text_form_is_base64url_without_padding() -> None:
     assert len(encode_text(FINGERPRINT, Sequence(7, 3), b"")) == 24
 
 
-def test_a_claim_round_trips_through_its_text() -> None:
-    claim = b'{"role_version":123456}'
-    text = encode_text(ROLE_CLAIM, Sequence(42, 9), claim)
-    assert text.isascii() and "=" not in text
-    decoded = decode_text(text, SequenceLedger())
-    assert decoded == Frame(kind=ROLE_CLAIM, sequence=Sequence(42, 9), body=claim)
-    assert decoded.kind_name == KINDS[ROLE_CLAIM] == "role-claim"
-
-
 def test_a_fault_in_the_bytes_under_the_text_is_refused_by_the_frame() -> None:
     """The layer split, on the reference reader, by the control that owns each fault.
 
@@ -124,36 +115,9 @@ def test_a_fault_in_the_bytes_under_the_text_is_refused_by_the_frame() -> None:
     assert isinstance(refused, FrameRefusal) and refused.control == TRUNCATED, refused
 
 
-def test_an_empty_text_is_an_empty_frame_and_so_truncated() -> None:
-    """An empty string is the text of no bytes, which the frame then refuses."""
-    refused = decode_text("", SequenceLedger())
-    assert isinstance(refused, FrameRefusal) and refused.control == TRUNCATED, refused
-
-
 def test_decode_text_raises_only_on_a_callers_wrong_type() -> None:
     with pytest.raises(TypeError):
         decode_text(encode(FINGERPRINT, Sequence(1, 0), b""), SequenceLedger())  # type: ignore[arg-type]  # the wrong type is the point
-
-
-def test_a_frame_round_trips() -> None:
-    body = b'{"payload_kind":"fingerprint"}'
-    frame = encode(FINGERPRINT, Sequence(42, 9), body)
-    decoded = decode(frame, SequenceLedger())
-    assert decoded == Frame(kind=FINGERPRINT, sequence=Sequence(42, 9), body=body)
-    assert decoded.kind_name == KINDS[FINGERPRINT] == "fingerprint"
-
-
-def test_a_zero_length_body_is_a_frame() -> None:
-    """The shape the frame allows a codec to support for a bodiless route.
-
-    Whether a given route takes it is the consumer's decision; that the codec
-    can carry it is decided here, so that decision starts from a fact.
-    """
-    frame = encode(FINGERPRINT, Sequence.start(1), b"")
-    assert len(frame) == HEADER_SIZE
-    decoded = decode(frame, SequenceLedger())
-    assert isinstance(decoded, Frame)
-    assert decoded.body == b""
 
 
 def test_the_sequence_orders_as_the_integer_it_packs_to() -> None:

@@ -1,4 +1,4 @@
-"""The generation pointer, against every store that is not a violator.
+"""The generation pointer, against the stores that are not violators.
 
 Same standing as `test_lease.py`, `test_pool.py` and `test_addressing.py`, and
 for the same reason: conformance decides whether a store implements the
@@ -24,16 +24,34 @@ from ration.addressing import announce, resolve as resolve_role
 from ration.contract import Resolution, Unreachable, resolve
 from ration.memory import MemoryStore
 from ration.publish import UNPUBLISHED, Publication, current, key_for, publish
-from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
+from ration.conformance.support.backends import REAL_TTL, BackendUnderTest, Case
 from ration.conformance.support.faults import FaultInjector
 from ration.conformance.support.gate import Gate
 from ration.conformance.support.preemption import preemptive
 from ration.conformance.violators import NaiveStore
 from tests.cases import CASES
 
-#: Filtered rather than listed, so a store added to the registry is exercised
-#: here without this file changing.
-CORRECT_CASES = [case for case in CASES if not case.violates]
+#: The stores these tests run against: every registered store expected to be
+#: correct, other than `previous-version`. Filtered rather than listed, so a
+#: store added to the registry is exercised here without this file changing.
+#: `previous-version` differs from the in-memory store only in the version a
+#: conflict carries, so it runs only the tests a plant in its compare-and-set
+#: turned red (`WITH_PERMITTED`).
+#: A test of the arguments, decided before a store is reached, runs the
+#: in-memory store alone (`MEMORY_ONLY`).
+#: The plant passes behind that split are recorded on #35.
+CORRECT_CASES = [
+    case for case in CASES if not case.violates and case.name != "previous-version"
+]
+WITH_PERMITTED = [case for case in CASES if not case.violates]
+MEMORY_ONLY = [case for case in CASES if case.name == "correct"]
+
+
+def _on(cases: list[Case]) -> pytest.MarkDecorator:
+    """Run one test against `cases` in place of the `correct` fixture's own list."""
+    return pytest.mark.parametrize(
+        "correct", cases, ids=[case.name for case in cases], indirect=True
+    )
 
 #: Publishers and attempts for the load probe at the bottom. Deliberately the
 #: contended shape: every publisher advances the same topic, so most attempts
@@ -75,6 +93,7 @@ def test_a_topic_nobody_published_reads_as_nothing(
     assert current(correct.store, correct.key()) is None
 
 
+@_on(WITH_PERMITTED)
 def test_the_first_publication_is_fenced_like_any_other(
     correct: BackendUnderTest,
 ) -> None:
@@ -106,6 +125,7 @@ def test_the_first_publication_is_fenced_like_any_other(
 # -- the fencing token -------------------------------------------------------
 
 
+@_on(WITH_PERMITTED)
 def test_advancing_spends_the_generation_it_advanced_from(
     correct: BackendUnderTest,
 ) -> None:
@@ -141,6 +161,7 @@ def test_advancing_spends_the_generation_it_advanced_from(
     assert found is not None and found.artefact == "sha256:bbb"
 
 
+@_on(WITH_PERMITTED)
 def test_a_stalled_publisher_cannot_overwrite_a_newer_publication(
     correct: BackendUnderTest,
 ) -> None:
@@ -227,6 +248,7 @@ def test_a_publication_outlives_what_an_address_does_not(
 # -- the arguments this refuses ----------------------------------------------
 
 
+@_on(MEMORY_ONLY)
 def test_a_topic_without_a_name_or_an_artefact_is_refused(
     correct: BackendUnderTest,
 ) -> None:
@@ -568,6 +590,7 @@ def _duplicate_advances(store, topic: str) -> tuple[int, int]:
     return len(spent), len(spent) - len(set(spent))
 
 
+@_on(WITH_PERMITTED)
 def test_no_publication_is_silently_destroyed_under_load(
     correct: BackendUnderTest,
 ) -> None:

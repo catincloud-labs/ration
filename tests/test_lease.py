@@ -1,10 +1,10 @@
-"""The lease service, against every store that is not a violator.
+"""The lease service, against the stores that are not violators.
 
 These are **not** conformance tests and deliberately do not use the `backend`
 fixture. Conformance decides whether a store implements the contract; this file
 decides whether a lease built on the contract behaves, and running it against
 implementations that are wrong on purpose would only re-report findings the
-suite already owns. What it runs against is every case declaring no violations,
+suite already owns. What it runs against is the cases declaring no violations,
 filtered from the registry in `tests/cases.py` rather than listed here, so
 `postgres` is among them whenever a server is configured.
 
@@ -22,15 +22,30 @@ import pytest
 
 from ration.contract import Store, Unreachable
 from ration.lease import Lease, acquire, release, renew
-from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
+from ration.conformance.support.backends import REAL_TTL, BackendUnderTest, Case
 from ration.conformance.support.gate import Gate
 from ration.conformance.support.preemption import preemptive
 from ration.conformance.violators import NaiveStore
 from tests.cases import CASES
 
-#: Every implementation expected to be correct. Filtered rather than listed, so
-#: a store added to the registry is exercised here without this file changing.
-CORRECT_CASES = [case for case in CASES if not case.violates]
+#: The stores these tests run against: every registered store expected to be
+#: correct, other than `previous-version`. Filtered rather than listed, so a
+#: store added to the registry is exercised here without this file changing.
+#: `previous-version` differs from the in-memory store only in the version a
+#: conflict carries, so it runs only the tests a plant in its compare-and-set
+#: turned red (`WITH_PERMITTED`).
+#: The plant passes behind that split are recorded on #35.
+CORRECT_CASES = [
+    case for case in CASES if not case.violates and case.name != "previous-version"
+]
+WITH_PERMITTED = [case for case in CASES if not case.violates]
+
+
+def _on(cases: list[Case]) -> pytest.MarkDecorator:
+    """Run one test against `cases` in place of the `correct` fixture's own list."""
+    return pytest.mark.parametrize(
+        "correct", cases, ids=[case.name for case in cases], indirect=True
+    )
 
 #: Claimants contending for one key, and attempts each. Real threads against a
 #: real store, and for `postgres` the only instrument there is -- an atomic step
@@ -102,6 +117,7 @@ def test_an_expired_grant_is_free(correct: BackendUnderTest) -> None:
 # -- the fencing token -----------------------------------------------------
 
 
+@_on(WITH_PERMITTED)
 def test_renewing_moves_the_grant_forward_and_spends_the_old_one(
     correct: BackendUnderTest,
 ) -> None:
@@ -122,6 +138,7 @@ def test_renewing_moves_the_grant_forward_and_spends_the_old_one(
     )
 
 
+@_on(WITH_PERMITTED)
 def test_a_holder_that_lost_the_key_cannot_renew(
     correct: BackendUnderTest,
 ) -> None:
@@ -158,6 +175,7 @@ def test_an_expired_grant_nobody_took_can_still_be_renewed(
     assert renew(correct.store, held) is not None
 
 
+@_on(WITH_PERMITTED)
 def test_releasing_a_lost_grant_does_not_disturb_the_new_holder(
     correct: BackendUnderTest,
 ) -> None:

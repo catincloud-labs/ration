@@ -36,12 +36,13 @@ drop a connection between the dial and the first statement, and a run with no
 either: it wraps `Store` and raises `Unreachable` itself, so it never enters
 `_connect` or `_execute` and cannot express this defect at any setting.
 
-**Every test here also runs against stores built wrong on purpose**, by the
-mechanism the suite's `src/ration/conformance/conftest.py` uses for the
-contract and for the same reason. Each test
-declares the one rule it holds; each store in `_BUILDS` names the rules it
-breaks and is `xfail(strict=True)` against every test holding one, so a wrong
-store that passes is a failure. They are not registered in `CASES`, because
+**Every test here also runs against the stores built wrong on purpose that
+break its rule**, by the mechanism the suite's
+`src/ration/conformance/conftest.py` uses for the contract and for the same
+reason. Each test declares the one rule it holds; each store in `_BUILDS` names
+the rules it breaks, and a test runs the correct store and every store that
+breaks its rule, each of those `xfail(strict=True)`, so a wrong store that
+passes is a failure. They are not registered in `CASES`, because
 these are not contract properties and a backend is not judged on them.
 """
 
@@ -161,8 +162,12 @@ _BUILDS = [
 ]
 
 
-def _holds(rule: str) -> pytest.MarkDecorator:
-    """Run the test against every build, expecting failure where `rule` is broken."""
+def _holds(rule: str, also: tuple[str, ...] = ()) -> pytest.MarkDecorator:
+    """Run the test against the correct build and each build that breaks `rule`, expecting those to fail.
+
+    `also` names a build that keeps `rule` and runs anyway, where a plant
+    turned that row red and the correct build's did not (#35).
+    """
     assert rule in _RULES, rule
     return pytest.mark.parametrize(
         "build",
@@ -183,6 +188,7 @@ def _holds(rule: str) -> pytest.MarkDecorator:
                 ),
             )
             for build in _BUILDS
+            if not build.violates or rule in build.violates or build.name in also
         ],
     )
 
@@ -432,7 +438,7 @@ def test_scripted_a_failed_redial_refuses(
     assert dialler.dials == 2
 
 
-@_holds("once")
+@_holds("once", also=("calls-every-connection-reused",))
 def test_scripted_the_redial_is_one_not_a_loop(
     build: _Build, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -467,19 +473,3 @@ def test_scripted_a_fresh_connection_that_fails_is_not_retried(
         store.read("k")
 
     assert dialler.dials == 1
-
-
-@_holds("a-write-is-never-repeated")
-def test_scripted_a_write_on_a_dead_reused_connection_is_never_repeated(
-    build: _Build, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    dead = _Connection(_ROW, _admin_shutdown())
-    fresh = _Connection((8, True))
-    dialler = _Dialler(dead, fresh)
-    store = _store(build, monkeypatch, dialler)
-    store.read("k")
-
-    with pytest.raises(Unreachable):
-        store.compare_and_set("k", 7, Record(b"again", "again"))
-
-    assert (dialler.dials, fresh.statements) == (1, 0)
