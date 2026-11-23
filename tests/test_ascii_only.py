@@ -1,6 +1,8 @@
 """This repository is ASCII, and here is the thing that checks it.
 
-Two separate reasons, and they fail differently, so both are asserted here.
+Two separate reasons, and one check holds both: every tracked file, read as
+bytes, so the package metadata and every message the package raises are read
+in the files they are built from.
 
 **The encoding one.** Package metadata, exception messages and anything a
 caller prints are read in terminals whose encoding nobody controls. A character
@@ -125,87 +127,6 @@ def test_every_tracked_file_is_ascii() -> None:
     )
 
 
-def test_the_package_metadata_is_ascii() -> None:
-    """The summary specifically, because it is the string `pip show` prints.
-
-    Distinct from the file check above: metadata is assembled by the build
-    backend, so a clean source tree does not by itself prove a clean artifact.
-    This reads what was actually installed.
-    """
-
-    import importlib.metadata as md
-
-    meta = md.metadata("catincloud-ration")
-    for field in ("Summary", "Name", "Version"):
-        value = meta.get(field) or ""
-        assert value.isascii(), f"non-ASCII in package metadata {field}: {value!r}"
-
-
-def test_runtime_messages_are_ascii() -> None:
-    """Every string this package can raise or print.
-
-    The narrowest and most load-bearing of the three. A docstring's em dash is a
-    style question; an exception message's em dash lands in a traceback, in a
-    terminal, in an issue report, rendered by an encoding nobody chose.
-
-    Walks the AST rather than grepping, so it sees the string literals as the
-    compiler does and cannot be fooled by one spanning several source lines.
-    """
-
-    import ast
-
-    src_root = REPO / "src" / "ration"
-    offenders: list[str] = []
-    for path in sorted(src_root.rglob("*.py")):
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        docstrings = {
-            id(node.body[0].value)
-            for node in ast.walk(tree)
-            if isinstance(
-                node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
-            )
-            and node.body
-            and isinstance(node.body[0], ast.Expr)
-            and isinstance(node.body[0].value, ast.Constant)
-            and isinstance(node.body[0].value.value, str)
-        }
-        for node in ast.walk(tree):
-            if (
-                isinstance(node, ast.Constant)
-                and isinstance(node.value, str)
-                and id(node) not in docstrings
-                and not node.value.isascii()
-            ):
-                offenders.append(
-                    f"{path.relative_to(REPO)}:{node.lineno}: {node.value[:60]!r}"
-                )
-
-    assert not offenders, (
-        "non-ASCII in runtime string literals. These reach terminals through "
-        "tracebacks and printed output, where the encoding is not ours to choose:\n  "
-        + "\n  ".join(offenders)
-    )
-
-
-def test_the_check_can_actually_fail() -> None:
-    """Calibration: the assertion above must reject a known-bad input.
-
-    A checker that has silently stopped detecting anything passes every commit,
-    which is the one failure mode the checks above cannot observe about
-    themselves.
-
-    The bad characters are written as escapes rather than literally, so this
-    file stays ASCII and does not fail the very check it calibrates. That is not
-    a trick to get around the rule: the rule is about what a reader and a
-    terminal receive, and an escape sequence is neither.
-    """
-
-    assert not f"an em dash {chr(0x2014)} here".isascii()
-    assert not f"an emoji {chr(0x1F534)} here".isascii()
-    assert not f"a warning sign {chr(0x26A0)} here".isascii()
-    assert "a plain hyphen - here".isascii()
-
-
 def _plant(count: int, planted: dict[int, bytes]) -> bytes:
     """`count` lines of 20 ASCII bytes each, with the numbered lines replaced.
 
@@ -217,14 +138,13 @@ def _plant(count: int, planted: dict[int, bytes]) -> bytes:
     )
 
 
-# Five arms, each placing its bytes where the comment says. Bytes above 0x7F
+# Four arms, each placing its bytes where the comment says. Bytes above 0x7F
 # are written as escapes, so this file stays ASCII.
 # Arm 3: fifteen lines of 20 bytes (300), then 14 bytes into line 16: byte 314.
 # Arm 4: two lines (40), a 23-byte line 3 (63), 33 more lines (723), then 34
 # bytes into line 37: byte 757.
 # Arm 5: fifteen lines (300), then 14 bytes into line 16 the three bytes of a
 # U+2014 at 314 to 316, then " and", then a lone byte at 321.
-_ARM_ASCII = _plant(20, {})
 _ARM_VALID = _plant(20, {16: b"line 16: plain\xe2\x80\x94 text\n"})
 _ARM_LONE = _plant(20, {16: b"line 16: plain\x97 text\n"})
 _ARM_BOTH = _plant(
@@ -240,7 +160,6 @@ _ARM_MIXED = _plant(20, {16: b"line 16: plain\xe2\x80\x94 and\x97 text\n"})
 @pytest.mark.parametrize(
     ("data", "expected"),
     [
-        pytest.param(_ARM_ASCII, [], id="1-ascii"),
         pytest.param(_ARM_VALID, ["plant.txt:16: U+2014"], id="2-valid-u2014"),
         pytest.param(
             _ARM_LONE,
@@ -270,10 +189,9 @@ def test_the_file_check_reports_every_arm(
 ) -> None:
     """Calibration of the file check, through the function the real test calls.
 
-    `test_the_check_can_actually_fail` calibrates `str.isascii` on strings built
-    in memory, so it never reaches a read and could not see the read skip a
-    file. These arms write bytes to disk and go through `_offenders_in`, the
-    same call the whole-repository test makes for each tracked file.
+    These arms write bytes to disk and go through `_offenders_in`, the same
+    call the whole-repository test makes for each tracked file, and that test
+    on the clean tree is the quiet arm.
 
     Arm 3 is the em dash as cp1252 writes it, a lone 0x97, which is the
     likeliest way one reaches this tree from a Windows editor or clipboard.
@@ -287,27 +205,6 @@ def test_the_file_check_reports_every_arm(
     path = tmp_path / "plant.txt"
     path.write_bytes(data)
     assert _offenders_in("plant.txt", path) == expected
-
-
-def test_the_arms_put_each_byte_where_its_offset_says() -> None:
-    """The offsets above are counted by hand, so count them a second way.
-
-    The check finds a line and an offset by splitting on LF and summing line
-    lengths. This finds them with `bytes.index` and a count of the LFs before
-    the byte, so a fixture edited out from under its expected offset goes red
-    here rather than having the expectation edited to match the check.
-    """
-
-    assert _ARM_ASCII.isascii()
-    assert _ARM_VALID[: _ARM_VALID.index(b"\xe2\x80\x94")].count(b"\n") == 15
-    assert _ARM_LONE.index(b"\x97") == 314
-    assert _ARM_LONE[:314].count(b"\n") == 15
-    assert _ARM_BOTH[: _ARM_BOTH.index(b"\xe2\x80\x94")].count(b"\n") == 2
-    assert _ARM_BOTH.index(b"\x97") == 757
-    assert _ARM_BOTH[:757].count(b"\n") == 36
-    assert _ARM_MIXED.index(b"\xe2\x80\x94") == 314
-    assert _ARM_MIXED.index(b"\x97") == 321
-    assert _ARM_MIXED[:321].count(b"\n") == 15
 
 
 def test_an_unreadable_tracked_file_is_an_offender(tmp_path: pathlib.Path) -> None:

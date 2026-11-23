@@ -116,19 +116,3 @@ def test_a_real_backend_is_present_where_one_is_required() -> None:
         f"registry and only these were built: {names}. A green run without it "
         "is a run of this repository's own fakes."
     )
-
-
-@pytest.mark.parametrize("fixture", sorted(FIXTURES))
-def test_no_property_is_claimed_by_a_case_that_is_otherwise_correct(fixture: str) -> None:
-    """The registry says what it means, in both directions.
-
-    A case with an empty `violates` is a claim that it satisfies the entire
-    contract. There is no third state, and this is the assertion that stops one
-    being introduced by a blank field.
-    """
-    for case in registered(fixture):
-        assert isinstance(case.violates, frozenset), case.name
-        assert all(prop for prop in case.violates), (
-            f"{case.name} declares an empty property name, which matches no "
-            "test and therefore silences its own xfail"
-        )

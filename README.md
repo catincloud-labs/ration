@@ -723,11 +723,12 @@ failure about a store that had been back the whole time.
   kills the store's backend with `pg_terminate_backend` against the server CI
   already runs, so the sequence is replayed on every pull request. Its fakes
   cover only what no server can stage.
-- **And every one of its tests runs against four stores built wrong on
-  purpose**, under the same strict xfail the contract's violators get: the
-  store as it stood before, one that redials until it works, one that forgets
-  which connections it opened itself, and one that gives a write the read's
-  courtesy. A test that stops rejecting is a failure on the next run.
+- **And each of its tests runs against the stores built wrong on purpose that
+  break its rule**, under the same strict xfail the contract's violators get.
+  Four are built: the store as it stood before, one that redials until it
+  works, one that forgets which connections it opened itself, and one that
+  gives a write the read's courtesy. A test that stops rejecting is a failure
+  on the next run.
 
 ## Installing
 

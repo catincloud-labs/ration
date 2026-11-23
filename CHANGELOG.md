@@ -170,6 +170,16 @@ description the README at this entry's commit would become.
   string is refused as `oversized` and any other as `malformed-text`, and that
   both come before any frame check.
 
+### A refusal that arrives late
+
+- **"And every one of its tests runs against four stores built wrong on
+  purpose"**, in the bullets under *A refusal that arrives late*,
+  from `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
+  test sweep removed the cases a plant pass showed another kept case
+  covers (#35). Each test of
+  `tests/test_postgres_killed_connection.py` now runs the correct store and the
+  stores that break its rule, and the bullet says so.
+
 ## AGENTS.md
 
 ### Merging, the cold review and the record
@@ -361,6 +371,16 @@ description the README at this entry's commit would become.
   review of this entry's pull request.
 
 ## docs/design/coordination-substrate.md
+
+### The frame's guarantees, at import
+
+- **"`tests/test_frame.py::test_a_maximum_past_the_length_field_is_refused_at_import`"**,
+  the citation in the frame table's row for a maximum that does not fit the
+  four-byte length field, from `6f5e822` (2026-11-21T18:05:38Z). Read dead
+  2026-11-23 against `28ce75a`, where no such test stands: `6345b46`
+  (2026-11-21T19:14:07Z) removed it, and the check it named is planted by
+  `tests/test_load_time_checks.py`. The row now cites that file's
+  `frame-maximum-past-the-length-field` row (#35).
 
 ### Where the registries are
 
@@ -759,3 +779,55 @@ cited a moved path are listed beside the docstrings.
   before it reads a character (#36). It now says a string longer than the
   largest frame's text is refused as `oversized`, and every other as
   `malformed-text`.
+
+### The test register's sweep
+
+- **"against every store that is not a violator"**, the first line of the
+  docstrings of `tests/test_lease.py`, `tests/test_pool.py`,
+  `tests/test_publish.py` and `tests/test_addressing.py`, with **"Filtered
+  rather than listed, so a store added to the registry is exercised here
+  without this file changing"** above `CORRECT_CASES` in the first three, all
+  from `9ada7a1` (2026-10-29T00:51:42Z), and **"`postgres` is among them
+  whenever a server is configured"** in `tests/test_lease.py`, from `93183f4`
+  (2026-11-09T18:38:31Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
+  test sweep removed the cases a plant pass showed another kept case
+  covers (#35). The four files run the in-memory store
+  alone, and say so.
+- **"for `postgres` the only instrument there is"**, **"except for
+  `postgres`, whose atomic step is on the far side of a socket"** and **"The
+  probe above keeps its place because `postgres` has no seam to park in"** in
+  `tests/test_lease.py`, **"this is the only instrument `postgres` admits"**
+  in `tests/test_pool.py` and **"for `postgres` there is no seam to park in"**
+  in `tests/test_publish.py`, all from `9ada7a1` (2026-10-29T00:51:42Z).
+  Read dead 2026-11-23 against the tree this entry's commit leaves, where the
+  test sweep removed the cases a plant pass showed another kept case
+  covers (#35). The load probes run against the in-memory store, beside the gate
+  that is their verdict.
+- **"each store in `_BUILDS` names the rules it breaks and is
+  `xfail(strict=True)` against every test holding one"** and **"Run the test
+  against every build"**, in `tests/test_postgres_killed_connection.py`, from
+  `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
+  test sweep removed the cases a plant pass showed another kept case
+  covers (#35). A test runs the correct build and
+  the builds that break its rule.
+- **"What keeps it honest is the second test below"** and **"Calibrates the
+  probe rather than the store, and must run first"**, in
+  `tests/test_postgres_cross_process.py`, from `9ada7a1`
+  (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
+  test sweep removed the cases a plant pass showed another kept case
+  covers (#35). The harness test reads the correct store's
+  verdict from its own run, and the naive store's test is the last.
+- **"Two separate reasons, and they fail differently, so both are asserted
+  here"**, **"Five arms"** and **"`test_the_check_can_actually_fail`
+  calibrates `str.isascii` on strings built in memory"**, in
+  `tests/test_ascii_only.py`, from `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
+  test sweep removed the cases a plant pass showed another kept case
+  covers (#35).
+  The file check holds both reasons, with four arms, and the whole-tree run is
+  its quiet arm.
+- **"It is asserted twice -- once against raw `duckdb.connect` and once
+  through `DuckDBStore`"**, in `tests/test_duckdb_single_process.py`, from
+  `9ada7a1` (2026-10-29T00:51:42Z). Read dead 2026-11-23 against the tree this entry's commit leaves, where the
+  test sweep removed the cases a plant pass showed another kept case
+  covers (#35). It is asserted against the engine,
+  beside its control.

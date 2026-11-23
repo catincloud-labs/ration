@@ -269,7 +269,7 @@ And against the reference codec alone:
 | The maximum is 1 MiB of body for every kind, a body of exactly that length round trips, and the largest frame's text, 1,398,126 characters, is the longest read | `tests/test_frame.py::test_the_maximum_is_one_mebibyte_of_body_for_every_kind`, `tests/test_frame.py::test_the_largest_frames_text_is_the_longest_text_read` |
 | An input past the maximum is refused before the reader allocates for it, whatever the buffer's item size | `tests/test_frame.py::test_an_input_past_the_maximum_is_refused_before_it_is_copied` |
 | Decoding reads any contiguous buffer as its bytes, and raises only on something that is not one | `tests/test_frame.py::test_decode_reads_any_contiguous_buffer_as_its_bytes`, `tests/test_frame.py::test_decode_raises_only_on_a_callers_wrong_type` |
-| A maximum that does not fit the four-byte length field is refused at import | `tests/test_frame.py::test_a_maximum_past_the_length_field_is_refused_at_import` |
+| A maximum that does not fit the four-byte length field is refused at import | `tests/test_load_time_checks.py::test_a_planted_wrong_fact_raises_at_import[frame-maximum-past-the-length-field]` |
 
 **What it refuses, and what that costs.** A sender identity in the header: which
 sender a frame belongs to is the receiver's knowledge, and a field the frame

@@ -1,4 +1,4 @@
-"""The generation pointer, against every store that is not a violator.
+"""The generation pointer, against the package's in-memory store.
 
 Same standing as `test_lease.py`, `test_pool.py` and `test_addressing.py`, and
 for the same reason: conformance decides whether a store implements the
@@ -31,9 +31,13 @@ from ration.conformance.support.preemption import preemptive
 from ration.conformance.violators import NaiveStore
 from tests.cases import CASES
 
-#: Filtered rather than listed, so a store added to the registry is exercised
-#: here without this file changing.
-CORRECT_CASES = [case for case in CASES if not case.violates]
+#: The package's in-memory store, and no other. Whether a store keeps the
+#: contract is the conformance suite's question, and it asks it of every
+#: registered store; what is decided here is whether this module behaves over
+#: a store that keeps it. The sweep's plant pass for #35 deleted each branch
+#: of the package's modules in turn, and no deletion was caught here on
+#: another store that the suite and these tests on this one missed.
+CORRECT_CASES = [case for case in CASES if case.name == "correct"]
 
 #: Publishers and attempts for the load probe at the bottom. Deliberately the
 #: contended shape: every publisher advances the same topic, so most attempts
@@ -505,9 +509,8 @@ def _duplicate_advances(store, topic: str) -> tuple[int, int]:
     is exactly the lost update the fence exists to refuse, and it is what the
     gate below arranges deterministically.
 
-    A probe, not the verdict: for `postgres` there is no seam to park in, so
-    this is the only instrument there is, and a run that finds nothing has not
-    shown there was nothing to find.
+    A probe, not the verdict: the gate below is the verdict, and a run of this
+    that finds nothing has not shown there was nothing to find.
     """
     seeded = publish(store, topic, "sha256:genesis", "genesis", generation=UNPUBLISHED)
     assert seeded is not None

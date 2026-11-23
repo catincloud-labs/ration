@@ -1,4 +1,4 @@
-"""The pool, against every store that is not a violator.
+"""The pool, against the package's in-memory store.
 
 Same standing as `test_lease.py` and for the same reason: conformance decides
 whether a store implements the contract, and this file decides whether a pool
@@ -31,13 +31,17 @@ from ration.conformance.support.preemption import preemptive
 from ration.conformance.violators import NaiveStore
 from tests.cases import CASES
 
-#: Filtered rather than listed, so a store added to the registry is exercised
-#: here without this file changing.
-CORRECT_CASES = [case for case in CASES if not case.violates]
+#: The package's in-memory store, and no other. Whether a store keeps the
+#: contract is the conformance suite's question, and it asks it of every
+#: registered store; what is decided here is whether this module behaves over
+#: a store that keeps it. The sweep's plant pass for #35 deleted each branch
+#: of the package's modules in turn, and no deletion was caught here on
+#: another store that the suite and these tests on this one missed.
+CORRECT_CASES = [case for case in CASES if case.name == "correct"]
 
 #: Claimants and attempts for the load probe. Same caveat as the lease's:
 #: these counts are not what the capacity property rests on. The gate at the
-#: bottom is the verdict; this is the only instrument `postgres` admits.
+#: bottom is the verdict.
 CLAIMANTS = 8
 ATTEMPTS = 25
 

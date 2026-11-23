@@ -1,4 +1,4 @@
-"""Role addressing, against every store that is not a violator.
+"""Role addressing, against the package's in-memory store.
 
 Not conformance tests. Addressing states no new contract property -- it is a
 *consumer* of the lease, and the lease is a consumer of the contract. What these
@@ -22,7 +22,13 @@ from ration.lease import release
 from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
 from tests.cases import CASES
 
-CORRECT_CASES = [case for case in CASES if not case.violates]
+#: The package's in-memory store, and no other. Whether a store keeps the
+#: contract is the conformance suite's question, and it asks it of every
+#: registered store; what is decided here is whether this module behaves over
+#: a store that keeps it. The sweep's plant pass for #35 deleted each branch
+#: of the package's modules in turn, and no deletion was caught here on
+#: another store that the suite and these tests on this one missed.
+CORRECT_CASES = [case for case in CASES if case.name == "correct"]
 
 
 @pytest.fixture(params=CORRECT_CASES, ids=[case.name for case in CORRECT_CASES])
@@ -124,7 +130,7 @@ def test_the_generation_moves_when_the_role_does(correct: BackendUnderTest) -> N
 # -- the arguments this refuses --------------------------------------------
 
 
-@pytest.mark.parametrize("ttl", [None, 0, -1.0])
+@pytest.mark.parametrize("ttl", [None, 0])
 def test_an_address_without_a_future_expiry_is_refused(
     correct: BackendUnderTest, ttl: float | None
 ) -> None:

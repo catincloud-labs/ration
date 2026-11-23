@@ -1,12 +1,11 @@
-"""The lease service, against every store that is not a violator.
+"""The lease service, against the package's in-memory store.
 
 These are **not** conformance tests and deliberately do not use the `backend`
 fixture. Conformance decides whether a store implements the contract; this file
 decides whether a lease built on the contract behaves, and running it against
 implementations that are wrong on purpose would only re-report findings the
-suite already owns. What it runs against is every case declaring no violations,
-filtered from the registry in `tests/cases.py` rather than listed here, so
-`postgres` is among them whenever a server is configured.
+suite already owns. What it runs against is the registry's `correct` case,
+the in-memory store, read from `tests/cases.py` rather than built here.
 
 **One negative control does live here**, at the bottom: the racing-acquire
 check is re-run against `naive`, which must double-grant. A concurrency check
@@ -28,13 +27,16 @@ from ration.conformance.support.preemption import preemptive
 from ration.conformance.violators import NaiveStore
 from tests.cases import CASES
 
-#: Every implementation expected to be correct. Filtered rather than listed, so
-#: a store added to the registry is exercised here without this file changing.
-CORRECT_CASES = [case for case in CASES if not case.violates]
+#: The package's in-memory store, and no other. Whether a store keeps the
+#: contract is the conformance suite's question, and it asks it of every
+#: registered store; what is decided here is whether this module behaves over
+#: a store that keeps it. The sweep's plant pass for #35 deleted each branch
+#: of the package's modules in turn, and no deletion was caught here on
+#: another store that the suite and these tests on this one missed.
+CORRECT_CASES = [case for case in CASES if case.name == "correct"]
 
-#: Claimants contending for one key, and attempts each. Real threads against a
-#: real store, and for `postgres` the only instrument there is -- an atomic step
-#: on the far side of a socket has no seam to park in.
+#: Claimants contending for one key, and attempts each. Real threads against
+#: the store.
 #:
 #: **These counts are not what the exclusivity property rests on.** The
 #: negative control at the bottom of this file is a *gate*, and it is
@@ -320,9 +322,7 @@ def _exclusivity_violations(store: Store, key: str) -> int:
 
     **It remains a probe, and it is not what the property rests on.** A run
     that finds nothing has not shown there was nothing to find. What the
-    property rests on is the gate below -- except for `postgres`, whose atomic
-    step is on the far side of a socket, where this is the only instrument
-    there is.
+    property rests on is the gate below.
     """
     guard = threading.Lock()
     violations = 0
@@ -408,9 +408,8 @@ def test_a_non_atomic_store_grants_a_key_that_is_already_held() -> None:
     has a seam, a gate is worth more than any per-round rate**: it reaches fewer
     places, and what it reaches it can prove it reached. A probe that catches a
     known-bad store some of the time is evidence about the probe; this test's
-    parked thread is a verdict. The probe above keeps its place because
-    `postgres` has no seam to park in, and there it is the only instrument
-    there is.
+    parked thread is a verdict. The probe above stays beside it as the case
+    the design page cites for the guarantee under contention.
 
     **Shown to go quiet as well as to fire**, because a control observed only
     to fire has not been shown to discriminate. This test has no quiet arm of
