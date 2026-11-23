@@ -162,8 +162,12 @@ _BUILDS = [
 ]
 
 
-def _holds(rule: str) -> pytest.MarkDecorator:
-    """Run the test against the correct build and each build that breaks `rule`, expecting those to fail."""
+def _holds(rule: str, also: tuple[str, ...] = ()) -> pytest.MarkDecorator:
+    """Run the test against the correct build and each build that breaks `rule`, expecting those to fail.
+
+    `also` names a build that keeps `rule` and runs anyway, where a plant
+    turned that row red and the correct build's did not (#35).
+    """
     assert rule in _RULES, rule
     return pytest.mark.parametrize(
         "build",
@@ -184,7 +188,7 @@ def _holds(rule: str) -> pytest.MarkDecorator:
                 ),
             )
             for build in _BUILDS
-            if not build.violates or rule in build.violates
+            if not build.violates or rule in build.violates or build.name in also
         ],
     )
 
@@ -403,7 +407,38 @@ def _store(
     return build.store("postgresql://scripted/ration")
 
 
+@_holds("redials")
+def test_scripted_a_dead_reused_connection_is_redialled_once(
+    build: _Build, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dead = _Connection(_ROW, _admin_shutdown())
+    fresh = _Connection(_ROW)
+    dialler = _Dialler(dead, fresh)
+    store = _store(build, monkeypatch, dialler)
+    assert store.read("k") == _READING  # now the connection is reused, not fresh
+
+    assert store.read("k") == _READING
+
+    assert dead.closed, "a broken connection must not be handed out again"
+    assert (dialler.dials, fresh.statements) == (2, 1)
+
+
 @_holds("once")
+def test_scripted_a_failed_redial_refuses(
+    build: _Build, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dead = _Connection(_ROW, _admin_shutdown())
+    dialler = _Dialler(dead, psycopg.OperationalError("connection refused"))
+    store = _store(build, monkeypatch, dialler)
+    store.read("k")
+
+    with pytest.raises(Unreachable, match="connection refused"):
+        store.read("k")
+
+    assert dialler.dials == 2
+
+
+@_holds("once", also=("calls-every-connection-reused",))
 def test_scripted_the_redial_is_one_not_a_loop(
     build: _Build, monkeypatch: pytest.MonkeyPatch
 ) -> None:

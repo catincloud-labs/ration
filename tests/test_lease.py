@@ -1,11 +1,12 @@
-"""The lease service, against the package's in-memory store.
+"""The lease service, against the stores that are not violators.
 
 These are **not** conformance tests and deliberately do not use the `backend`
 fixture. Conformance decides whether a store implements the contract; this file
 decides whether a lease built on the contract behaves, and running it against
 implementations that are wrong on purpose would only re-report findings the
-suite already owns. What it runs against is the registry's `correct` case,
-the in-memory store, read from `tests/cases.py` rather than built here.
+suite already owns. What it runs against is the cases declaring no violations,
+filtered from the registry in `tests/cases.py` rather than listed here, so
+`postgres` is among them whenever a server is configured.
 
 **One negative control does live here**, at the bottom: the racing-acquire
 check is re-run against `naive`, which must double-grant. A concurrency check
@@ -21,22 +22,36 @@ import pytest
 
 from ration.contract import Store, Unreachable
 from ration.lease import Lease, acquire, release, renew
-from ration.conformance.support.backends import REAL_TTL, BackendUnderTest
+from ration.conformance.support.backends import REAL_TTL, BackendUnderTest, Case
 from ration.conformance.support.gate import Gate
 from ration.conformance.support.preemption import preemptive
 from ration.conformance.violators import NaiveStore
 from tests.cases import CASES
 
-#: The package's in-memory store, and no other. Whether a store keeps the
-#: contract is the conformance suite's question, and it asks it of every
-#: registered store; what is decided here is whether this module behaves over
-#: a store that keeps it. The sweep's plant pass for #35 deleted each branch
-#: of the package's modules in turn, and no deletion was caught here on
-#: another store that the suite and these tests on this one missed.
-CORRECT_CASES = [case for case in CASES if case.name == "correct"]
+#: The stores these tests run against: every registered store expected to be
+#: correct, other than `previous-version`. Filtered rather than listed, so a
+#: store added to the registry is exercised here without this file changing.
+#: `previous-version` differs from the in-memory store only in the version a
+#: conflict carries, so it runs only the tests a plant in its compare-and-set
+#: turned red (`WITH_PERMITTED`), and a test of the arguments, decided before a
+#: store is reached, runs the in-memory store alone (`MEMORY_ONLY`). The plant
+#: passes behind that split are recorded on #35.
+CORRECT_CASES = [
+    case for case in CASES if not case.violates and case.name != "previous-version"
+]
+WITH_PERMITTED = [case for case in CASES if not case.violates]
+MEMORY_ONLY = [case for case in CASES if case.name == "correct"]
 
-#: Claimants contending for one key, and attempts each. Real threads against
-#: the store.
+
+def _on(cases: list[Case]) -> pytest.MarkDecorator:
+    """Run one test against `cases` in place of the `correct` fixture's own list."""
+    return pytest.mark.parametrize(
+        "correct", cases, ids=[case.name for case in cases], indirect=True
+    )
+
+#: Claimants contending for one key, and attempts each. Real threads against a
+#: real store, and for `postgres` the only instrument there is -- an atomic step
+#: on the far side of a socket has no seam to park in.
 #:
 #: **These counts are not what the exclusivity property rests on.** The
 #: negative control at the bottom of this file is a *gate*, and it is
@@ -104,6 +119,7 @@ def test_an_expired_grant_is_free(correct: BackendUnderTest) -> None:
 # -- the fencing token -----------------------------------------------------
 
 
+@_on(WITH_PERMITTED)
 def test_renewing_moves_the_grant_forward_and_spends_the_old_one(
     correct: BackendUnderTest,
 ) -> None:
@@ -124,6 +140,7 @@ def test_renewing_moves_the_grant_forward_and_spends_the_old_one(
     )
 
 
+@_on(WITH_PERMITTED)
 def test_a_holder_that_lost_the_key_cannot_renew(
     correct: BackendUnderTest,
 ) -> None:
@@ -160,6 +177,7 @@ def test_an_expired_grant_nobody_took_can_still_be_renewed(
     assert renew(correct.store, held) is not None
 
 
+@_on(WITH_PERMITTED)
 def test_releasing_a_lost_grant_does_not_disturb_the_new_holder(
     correct: BackendUnderTest,
 ) -> None:
@@ -322,7 +340,9 @@ def _exclusivity_violations(store: Store, key: str) -> int:
 
     **It remains a probe, and it is not what the property rests on.** A run
     that finds nothing has not shown there was nothing to find. What the
-    property rests on is the gate below.
+    property rests on is the gate below -- except for `postgres`, whose atomic
+    step is on the far side of a socket, where this is the only instrument
+    there is.
     """
     guard = threading.Lock()
     violations = 0
@@ -408,8 +428,9 @@ def test_a_non_atomic_store_grants_a_key_that_is_already_held() -> None:
     has a seam, a gate is worth more than any per-round rate**: it reaches fewer
     places, and what it reaches it can prove it reached. A probe that catches a
     known-bad store some of the time is evidence about the probe; this test's
-    parked thread is a verdict. The probe above stays beside it as the case
-    the design page cites for the guarantee under contention.
+    parked thread is a verdict. The probe above keeps its place because
+    `postgres` has no seam to park in, and there it is the only instrument
+    there is.
 
     **Shown to go quiet as well as to fire**, because a control observed only
     to fire has not been shown to discriminate. This test has no quiet arm of
