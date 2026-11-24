@@ -271,6 +271,29 @@ description the README at this entry's commit would become.
   guards are class B and their self-tests class C, and names
   `power-of-ten.json` and the checks it declares.
 
+### The pull request title, in a squash
+
+- **"A PR title becomes the merge commit history cites as `#N`"** The first
+  clause of the third sentence of the bullet headed "A title is a git
+  artifact", under *Change workflow*, in this wording from `9ada7a1`
+  (2026-10-29T00:51:42Z), the commit that published the tree. Read dead
+  2026-11-24 against `main` at `4e7b198` and this repository's merge
+  settings, read with `gh api repos/catincloud-labs/ration`:
+  `allow_merge_commit` is false, `squash_merge_commit_title` is `PR_TITLE`
+  and `squash_merge_commit_message` is `PR_BODY`. Every pull request merges
+  as a squash, whose subject is the title with `(#N)` appended and whose
+  message continues with the pull request body, so no merge commit carries a
+  title. The clause now says the title becomes the squash commit's subject,
+  which history cites as `#N`; the rest of the sentence stands.
+- **"A title becomes the merge commit's message"** The opening of the second
+  sentence of the sub-bullet beginning "Guarded, not merely written down",
+  under the closing-verb rule in *Change workflow*, in this wording from
+  `922eb96` (2026-11-14T02:37:30Z). Read dead 2026-11-24 against the same
+  commit and settings: the title is the squash commit's subject, and a
+  trailer in the body lands on `main` while the title still holds none. The
+  sentence now says the title becomes the squash commit's subject; that it
+  holds no trailer, and that a close you mean goes in the body, stands.
+
 ## .githooks/commit-msg
 
 ### The header
@@ -369,6 +392,18 @@ description the README at this entry's commit would become.
   creates no release for a tag that is not verified, and the next sentence
   names `release.yml` rather than "The same workflow"; found by the cold
   review of this entry's pull request.
+
+## .github/PULL_REQUEST_TEMPLATE.md
+
+### The comment on closing keywords
+
+- **"It becomes the merge commit's message"** The opening of the second
+  sentence of the comment's last paragraph, which begins "The title is
+  scanned too", in this wording from `922eb96` (2026-11-14T02:37:30Z). Read
+  dead 2026-11-24 against `main` at `4e7b198` and this repository's merge
+  settings, for the reason in the AGENTS.md entry *The pull request title,
+  in a squash*. The sentence now says the title becomes the squash
+  commit's subject; that it holds no trailer stands.
 
 ## docs/design/coordination-substrate.md
 
