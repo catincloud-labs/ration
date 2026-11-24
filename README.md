@@ -86,14 +86,10 @@ on is stated once, in `src/ration/contract.py`, and decided by
 
 ## Addressing a role, and why it is not a name record
 
-A role must not be pinned to a host by accident, and a caller that reaches a
-service by hostname has done exactly that. So services address each other by
-**role**, and something resolves the role to a host.
-
-**That something introduces no new state, which is why it is a module here
-rather than a service of its own.** *Who holds this role right now* is already
-lease state. The address rides as the lease's own payload, so a role is
-announced and held in one operation and there is nothing to keep in step.
+Services find each other by role rather than by hostname. `ration.addressing`
+turns a role into an endpoint by reading the lease on that role: the holder's
+endpoint is stored as the lease payload, so taking a role and publishing where
+it lives are a single write, and the module keeps no state beside the lease.
 
 ```python
 announce(store, "producer", "node-a.example:8080", holder="node-a", ttl=30.0)
@@ -102,46 +98,32 @@ resolve(store, "producer")
 #         holder='node-a', version=7)
 ```
 
-**The alternative was to publish the address into a name service and let
-callers resolve by DNS. It loses on a lesson that is not new.** The lease
-already decides who holds a role, so a name record is a *second copy of that
-fact*, and it goes stale in exactly the moment that matters: a failover. **Two
-copies of a fact is one fact and one stale claim.**
+`version` in that answer is the lease version it was read at. A callee that
+has already seen a later one can turn away a caller carrying an earlier one,
+which a DNS record, having no generation at all, cannot offer. Why the address
+is not kept in a name service instead, and what reading it from the store
+costs, is argued in the module docstring of `ration.addressing`: in short, a
+lookup now needs the store to be reachable, so a partition that already
+stopped a peer taking leases also stops it finding roles.
 
-The concrete form of the same objection is the `version` field above. It is
-the lease generation the answer was read at, so a caller can be refused by a
-callee that has seen a newer one. **A cached name has no generation**, so a
-stale holder keeps being reachable and nobody can tell. An address without a
-generation is a guess with good manners.
+`announce` insists on an expiry even though the lease layer accepts
+`ttl=None`, and its docstring says why. `resolve` goes to the store on every
+call and keeps nothing between calls.
 
-The network still carries the packets. It is the **transport**; it is not the
-register of who holds what, and those are different jobs.
-
-**What it costs.** Service addressing now depends on the coordination store
-being reachable. A store that refuses under partition already meant a peer
-could take no lease while it was unreachable; it now also means the peer can
-resolve no role. That **widens the blast radius of a failure a deployment has
-already accepted** rather than introducing a new one, which is a smaller claim
-than "no new risk" and is the honest one.
-
-**`ttl` is required here where the lease layer allows `None`.** A claim with no
-expiry keeps answering for a holder that stopped existing, which is the
-stale-name failure arriving through the door this module was built to close.
-
-**The expiry assertions are backed by a control that reproduces the defect.**
-Most of `tests/test_addressing.py` asserts an address *stops* answering, and a
-test asserting an absence can pass while looking at nothing. So a deliberately
-caching resolver is **required to keep answering** for an expired role; if it
-ever stops, the tests above it are measuring the passage of time rather than
-the store.
+**The expiry tests carry a control built to fail them.** Most of
+`tests/test_addressing.py` checks that an address stops resolving, and a test
+of an absence can pass while looking at nothing. So the same file runs a
+resolver that caches on purpose and requires it to keep answering after a
+role's lease has lapsed; were it ever to stop, the other tests would be timing
+the clock rather than reading the store.
 
 ## Publishing a generation pointer, and why it is not a lease
 
-A producer publishes an artefact, consumers act on it, and a reader needs to
-tell a stale artefact from a current one. `publish.py` gives the pointer a
-**generation**: a compare-and-set on a key holding a generation and a pointer,
-where the generation is the store's own version, the same number
-`addressing.py` carries as `Address.version`.
+When a producer publishes something consumers act on, a reader has to be able
+to say whether what it holds is the latest. `ration.publish` keeps one key per
+topic, holding the publisher's token and a reference to the artefact, and the
+topic's **generation** is that key's store version: the same counter
+`Address.version` reports for a role.
 
 ```python
 made = publish(store, "config", "sha256:9f2c...", "producer", generation=UNPUBLISHED)
@@ -150,46 +132,40 @@ current(store, "config")
 #             generation=1, artefact='sha256:9f2c...')
 ```
 
-**Only the pointer lives here, because the artefact half has nothing to
-coordinate.** Once published bytes are named by content they are immutable,
-and immutable data needs no lock: lockfiles and atomic swaps exist only for an
-artefact that mutates in place.
+Only the pointer is coordinated. An artefact named by its content cannot change
+once written, so there is nothing about it to lock.
 
-**The differences from a lease are the design, and both run in the refused
-direction.** A publication takes **no TTL, structurally**: there is no
-parameter to pass, where `announce` *requires* one. An address is a claim
-about a live process, a publication is a fact about content, and an expiring
-pointer would vanish without a successor and read as a topic never published.
-And there is **no retract**: a publication is superseded, never deleted, which
-also keeps dormant the resolve-after-deletion edge `lease.py` records as *"a
-real edge for any consumer that does need the distinction."* The test for
-non-expiry calibrates its own clock:
-a leased address under the same store must expire across the same advance, so
-the publication standing through it is a decision rather than a default.
+**It differs from a lease in two ways, and both are refusals.** `publish` has
+no TTL parameter at all, where `announce` demands one: a role describes a
+running process that can vanish, a publication describes content, and a
+pointer that lapsed would look exactly like a topic nobody had published. And
+nothing retracts a publication; a newer one replaces it. Since nothing here
+deletes, the release edge `lease.py` records, where an applied delete and a key
+someone else took read alike, never comes up. The test for non-expiry checks
+its own clock first: an address leased in the same store has to lapse over the
+same advance, so a publication still standing afterwards shows a decision and
+not a clock that never moved.
 
-**What building it found: recovery from an ambiguous advance needs two checks,
-and each has a case the other cannot decide.** A publisher is its own
-predecessor as the *routine* case, since every advance rewrites a key already
-holding its token, and it rewrites with **different payloads**, which the lease
-never did. So `resolve`'s APPLIED is no longer enough to hand back a handle: a
-publisher identity racing itself (two replicas, or a retry racing its original)
-can have its lost write attributed to the write that survived, and only the
-**payload** distinguishes them. The other case: a recovery built purely on the
-follow-up read, token and artefact both matching, decides one case wrongly, an
-ambiguous **republish of the standing artefact**, where nothing in the store
-distinguishes the lost write and only the unmoved version says it never
-landed. Both cases are pinned in `tests/test_publish.py`. The contract is
-untouched by both: the information was in the store the whole time.
+**Building it found that recovering an ambiguous advance takes two checks,
+each settling a case the other cannot.** Every advance after the first
+rewrites a key that already carries this publisher's token, usually with a new
+artefact, which no lease does. When two writers share one publisher identity,
+as two replicas do, or a retry and its original, the contract's verdict alone
+can credit the lost write with the one that landed, and only comparing the
+stored artefact tells them apart. The other way round, an ambiguous republish
+of the artefact already in place leaves token and artefact both matching, and
+only the version that did not move shows the write never landed, so judging by
+the read-back alone gets it wrong. `tests/test_publish.py` pins both cases,
+the module docstring of `ration.publish` walks through them, and the contract
+did not change: everything needed was already stored.
 
-**Consumers poll.** The contract offers no watch, so "has the pointer moved?"
-is a read and a comparison, repeated. Staleness is *detectable*, not *pushed*;
-a cache added to hide the cost would be the defect the addressing section
-above documents refusing.
+**Readers poll.** The contract has no watch, so noticing a new generation means
+reading again and comparing. A stale pointer can be detected, never announced,
+and the same docstring says why no cache is added to hide the polling.
 
-**The limit, stated before it is needed:** a pointer that needs two keys to
-move together, an artefact and its index published atomically, needs a
-guarantee the contract deliberately refuses. That would be a change to the
-contract, not a quiet widening here.
+**Where it stops:** publishing an artefact together with its index would need
+two keys to change atomically, which the contract does not offer, so that would
+be a change to the contract rather than to this module.
 
 ## The frame, and the suite of frames built wrong on purpose
 
@@ -518,22 +494,20 @@ finding about the backend or the contract, not a fixture to be written.
 
 ## Every service is one compare-and-set
 
-- **The lease**: `acquire`, `renew` and `release`, each of them one
-  compare-and-set, and **no new method on `Store`**. A contract is tested by
-  what its first real consumer needs that it lacks, and the answer was
-  **nothing**: the refusals held, at a cost of one extra read on the ambiguous
-  path.
-- **The pool**, which is what the name promises. The contract forced the design
-  rather than leaving it open: expiry is evaluated by the store, and a store
-  expires *keys* rather than elements inside a value, so a pool of N grants on
-  one key would have its deadlines evaluated by whoever read it, which is
-  `client-expiry`, a violator the suite already rejects. So **a pool is N keys,
-  each one of these leases**, and capacity is the number of keys rather than a
-  number written down anywhere. The evidence is what `pool.py` does not
-  contain: no `renew` and no `release`, because a pool grant *is* a lease.
-- **The generation pointer**: `publish.py`, versioned published state as a
-  compare-and-set on one key, the same primitive as a lease rather than a
-  second one.
+- **The lease** (`ration.lease`): `acquire`, `renew` and `release` are one
+  compare-and-set apiece, and `Store` gained no method for them. What a
+  contract's first real consumer is missing is the test of the contract, and
+  here it was missing **nothing**: the refusals held, and the only price was a
+  second read when an answer is lost.
+- **The pool** (`ration.pool`), the thing the name promises. The store decides
+  expiry, and decides it per key, so N grants written into one key would have
+  their deadlines judged by the reader, the `client-expiry` violator the suite
+  already rejects. **A pool of N is therefore N separate leases**, and its
+  capacity is how many keys it has, with no number stored anywhere. `pool.py`
+  defines no `renew` and no `release`: the lease's own functions serve its
+  grants as they are. Its module docstring gives the full argument.
+- **The generation pointer** (`ration.publish`): published state with a
+  version, kept on one key by the same compare-and-set a lease uses.
 - **The frame** adds no key and no operation, and leans on the contract exactly
   once, for the epoch a restarted sender needs.
 
