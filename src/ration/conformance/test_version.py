@@ -1,9 +1,10 @@
-"""Property 1: the version rises per key and is never reused, not even after deletion.
+"""Property 1: each key's version only rises, and no value of it is issued twice.
 
-A value-comparing swap does not satisfy this, and the difference is not
-academic. Two consequences rest here: the version *is* the generation number
-the published-state surface (`publish.py`) needs, and it is the fencing token that lets a protected resource reject a stalled holder waking up
-with a stale claim. A reused version makes that holder indistinguishable from
+Deletion included. A swap that compares values rather than versions falls
+short of this, and the gap has consequences. Two things lean on the version:
+it serves as the generation number `publish.py` hands out, and it is the
+fencing token a guarded resource checks to turn away a holder that stalled and
+woke up still believing in an old claim. A reused version makes that holder indistinguishable from
 the current one. Violated by `recycling` and by `global-counter`.
 
 Measures: src/ration/contract.py, property 1

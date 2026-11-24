@@ -1,11 +1,11 @@
-"""Frame codecs that are wrong on purpose, one check at a time.
+"""Deliberately broken frame codecs, each missing a single check.
 
 The same standing as `violators.py`, for the same reason: a frame check whose
 violator is missing looks exactly like a check whose violator silently passes.
-The frame suite holds every hostile case to a known-negative that fails
-without the check and a known-positive that passes with it -- and the
-known-negative is not a bad frame, it is a **reader without the check**,
-because that is the thing the suite has to be shown rejecting.
+For every hostile case the frame suite wants two readers: one lacking the
+check, which must fail, and the reference, which must pass. The failing one
+is not a bad frame but a **reader without the check**, because that is what
+the suite has to be shown rejecting.
 
 Each class removes exactly one check, and each is the shape a shortcut takes.
 "HTTP already frames the request" removes the length check. "The length field
@@ -24,7 +24,7 @@ string before asking how long it is. None of them is contrived; each is what
 the tree would contain if the check had been left for later.
 
 Where a violator must break two things to break one, it says so and declares
-both in `src/ration/conformance/support/codecs.py`. The three that replace the
+both in its row of the codec registry. The three that replace the
 text read whole -- `lenient-text`, `library-strict` and `skips-text-decode` --
 keep the text's length bound in front of it, and the two that replace `decode`
 whole keep the maximum where the reference reader has it, so each still drops

@@ -101,7 +101,7 @@ properties hold of the substrate besides:
 | A write applies only at the expected version. Absence is a version (`ABSENT`), so creation is a compare-and-set like any other | An upsert: creating a key that already exists. A write that reports a conflict and lands anyway. A conflict carrying a version the key never held | `src/ration/conformance/test_compare_and_set.py::test_the_write_lands_only_at_the_expected_version` | `create-always`, `conflict-writes`, `echoes-expected` |
 | The comparison and the write are one step: two writers racing from one version do not both apply, and neither do two creators racing from absence | Read-then-write | `src/ration/conformance/test_atomicity.py::test_two_writers_racing_from_one_version_do_not_both_apply` (a deterministic gate, where a store has an in-process seam), `src/ration/conformance/test_atomicity.py::test_concurrent_increments_lose_nothing` (a threaded probe, the only instrument where it has none), `src/ration/conformance/test_atomicity.py::test_two_creators_racing_from_absence_do_not_both_apply` | `naive`, `conflict-writes`, `postgres-naive` |
 | 1. The version rises per key and is never reused, not even after the key is deleted | A counter that restarts when the value goes; a counter shared across keys | `src/ration/conformance/test_version.py::test_versions_rise_per_key_and_are_never_reused` | `recycling`, `global-counter` |
-| 2. Expiry is evaluated by the store, against its own clock, at the moment it is asked. `ttl` is a duration; there is no parameter for a caller's deadline | The caller's clock; a store clock read early and acted on later | `src/ration/conformance/test_expiry.py::test_expiry_is_decided_by_the_store_when_it_is_asked` | `client-expiry`, `stale-clock` |
+| 2. Expiry is judged by the store, on the store's clock, when a read or write asks. `ttl` is a duration; there is no parameter for a caller's deadline | The caller's clock; a store clock read early and acted on later | `src/ration/conformance/test_expiry.py::test_expiry_is_decided_by_the_store_when_it_is_asked` | `client-expiry`, `stale-clock` |
 | 3. A caller that cannot reach the store has acquired nothing: `Unreachable` is raised, not returned | Treating silence as "nothing there" | `src/ration/conformance/test_unreachable.py::test_a_caller_that_cannot_reach_the_store_acquires_nothing` | `fail-open` |
 | 4. A write whose answer was lost is resolvable by reading, because the caller's token is in the store. `resolve` tests the version before the token, so a caller rewriting a key it already holds is not credited with its earlier write | Keeping the payload and losing the token; deciding by token alone | `src/ration/conformance/test_ambiguity.py::test_a_lost_answer_is_recovered_by_reading`, `src/ration/conformance/test_ambiguity.py::test_a_rewriters_lost_answer_is_resolved` | `token-dropping` |
 
@@ -112,8 +112,8 @@ them is a change to `src/ration/contract.py`, and so to the contract.
 
 **A conflict's version is not promised to be the key's current version.** `Conflict.version`
 is a version the key has held. Under concurrency `PostgresStore` reports the
-version the loser came *from*, and the contract permits it; a caller that needs
-the current version reads. The compare-and-set test accepts any version the key
+version the loser came *from*, and the contract permits it; a caller wanting
+the key's present version reads it. The compare-and-set test accepts any version the key
 has held, and `previous-version` (`src/ration/conformance/permitted.py`), registered with no
 violations, is the correct store that holds it to that: once a key has been
 written, it answers every refusal with the version the key held before its
@@ -146,41 +146,41 @@ is its **fencing token**.
 | A holder reacquiring under its own token is handed the grant it holds, not refused | `tests/test_lease.py::test_a_holder_reacquiring_its_own_grant_is_told_it_holds_it` |
 | Renewing moves the grant to a new version and spends the old one | `tests/test_lease.py::test_renewing_moves_the_grant_forward_and_spends_the_old_one` |
 | A holder whose key was taken cannot renew | `tests/test_lease.py::test_a_holder_that_lost_the_key_cannot_renew` |
-| Expiry alone does not break the chain: an expired grant nobody took still renews, because its version has not moved | `tests/test_lease.py::test_an_expired_grant_nobody_took_can_still_be_renewed` |
+| An expired grant that nobody has taken still renews: its version has not moved, so lapsing by itself ends nothing | `tests/test_lease.py::test_an_expired_grant_nobody_took_can_still_be_renewed` |
 | A released key, and an expired one, are free | `tests/test_lease.py::test_a_released_grant_is_free`, `tests/test_lease.py::test_an_expired_grant_is_free` |
 | Releasing a grant already lost does not disturb the new holder | `tests/test_lease.py::test_releasing_a_lost_grant_does_not_disturb_the_new_holder` |
 | An unreachable store grants nothing, and is not reported as a key that is taken | `tests/test_lease.py::test_an_unreachable_store_grants_nothing` |
 | An ambiguous grant or renew is recovered if it landed and not claimed if it did not | `tests/test_lease.py::test_an_ambiguous_grant_that_landed_is_recovered`, `tests/test_lease.py::test_an_ambiguous_grant_that_never_landed_is_not_claimed`, `tests/test_lease.py::test_an_ambiguous_renew_that_landed_is_recovered`, `tests/test_lease.py::test_an_ambiguous_renew_that_never_landed_is_not_claimed` |
 | An ambiguous release reports `False` rather than guessing | `tests/test_lease.py::test_an_ambiguous_release_gives_up_rather_than_guessing` |
 
-**What it refuses.** Waiting: a refusal is returned and the caller writes the
-loop. Retrying a conflict from `Conflict.version`, the one number the contract
-declines to promise. Distinguishing an applied ambiguous release from a key
-someone else took: both read the same, and the lease needs only that the
-caller no longer holds the key, so `release` claims the lesser answer.
+**What it refuses.** Waiting: a refused caller gets `None` and does any
+retrying itself. Retrying a conflict from `Conflict.version`, the one number
+the contract declines to promise. Telling an applied ambiguous release apart
+from a key someone else took: the two read the same, and `release` reports
+`False` for both.
 
 ## The pool: a bounded number of holders, refused rather than overdrawn
 
-`src/ration/pool.py`: a pool of N grants is N keys, each a lease, because the
-store expires keys rather than elements inside a value. Capacity is the
-number of keys and is written nowhere in the store. The pool adds one
-operation, a different way of choosing which key to take, and a read-only
-`holders` sample; it has no `renew` and no `release` of its own.
+`src/ration/pool.py`: a pool of N grants is N keys, each held as a lease; the
+module docstring gives the reason. Capacity is the number of keys and is
+written nowhere in the store. Beyond the lease, the pool supplies one thing,
+its own choice of which slot to take, and a read-only `holders` sample; it has
+no `renew` and no `release` of its own.
 
 | Guarantee | Shown by |
 | --- | --- |
 | A pool grants exactly its capacity, and the next claimant is refused: **refused rather than overdrawn** | `tests/test_pool.py::test_a_pool_grants_exactly_its_capacity` |
 | Under contention, no slot is held twice | `tests/test_pool.py::test_a_slot_is_never_held_twice_under_load`, with the negative control `tests/test_pool.py::test_a_non_atomic_store_grants_one_slot_to_two_holders` |
-| A holder retrying after a lost answer is handed the slot it already holds, even behind a free one, rather than a second slot | `tests/test_pool.py::test_a_holder_retrying_is_handed_the_slot_it_already_has`, `tests/test_pool.py::test_a_retry_finds_its_grant_behind_a_free_slot` |
+| A holder that retries because its answer was lost gets back the slot it already has, even when a free slot comes first in the scan, and not a second one | `tests/test_pool.py::test_a_holder_retrying_is_handed_the_slot_it_already_has`, `tests/test_pool.py::test_a_retry_finds_its_grant_behind_a_free_slot` |
 | A pool grant renews and releases as a lease, through `src/ration/lease.py` unchanged | `tests/test_pool.py::test_a_pool_grant_renews_and_releases_as_a_lease` |
 | A released slot, and an expired one, are granted again | `tests/test_pool.py::test_a_released_slot_is_granted_again`, `tests/test_pool.py::test_an_expired_slot_is_granted_again` |
 | An unreachable store grants no slot, and is not reported as a full pool | `tests/test_pool.py::test_an_unreachable_store_grants_no_slot` |
-| The scan's starting slot is a property of the holder, not of the interpreter that ran it | `tests/test_pool.py::test_the_rotation_does_not_depend_on_the_interpreter` |
+| Where the scan starts depends on the holder alone, and is the same in every interpreter | `tests/test_pool.py::test_the_rotation_does_not_depend_on_the_interpreter` |
 
-**What it refuses.** Waiting, for the lease's reason. Taking a slot freed
-behind the scan: it is missed until the next call, which over-refuses. A
-consistent count of a moving pool: `holders` reads slots one at a time and is a
-sample, not a snapshot.
+**What it refuses.** Waiting, as the lease refuses it. A slot that frees up
+behind the scan: it is not taken until a later call, so a call can refuse while
+a slot is free. An exact count while the pool is changing: `holders` reads each
+slot separately, so its answer need never have been true all at once.
 
 ## Addressing: where a role is, read from the lease that holds it
 
@@ -194,7 +194,7 @@ fencing token a callee can refuse.
 | A role resolves to the endpoint its holder announced, and to nothing when nobody holds it | `tests/test_addressing.py::test_a_role_resolves_to_where_its_holder_said_it_was`, `tests/test_addressing.py::test_a_role_nobody_holds_resolves_to_nothing` |
 | A held role is refused to a second announcer | `tests/test_addressing.py::test_a_second_holder_cannot_announce_a_held_role` |
 | A released role stops resolving and can move; an expired one stops resolving | `tests/test_addressing.py::test_a_released_role_stops_resolving_and_can_move`, `tests/test_addressing.py::test_an_expired_role_stops_resolving` |
-| The expiry assertions measure the store, not the passage of time: a deliberately caching resolver is required to keep answering for an expired role | `tests/test_addressing.py::test_a_caching_resolver_still_answers_for_an_expired_role` |
+| The expiry assertions measure the store, not the passage of time: a resolver that caches on purpose must still answer for an expired role | `tests/test_addressing.py::test_a_caching_resolver_still_answers_for_an_expired_role` |
 | The generation moves when the role does | `tests/test_addressing.py::test_the_generation_moves_when_the_role_does` |
 | An address must expire: `ttl` is required and must lie in the future | `tests/test_addressing.py::test_an_address_without_a_future_expiry_is_refused` |
 | An empty role or endpoint is refused, and so is a role key passed as a role name | `tests/test_addressing.py::test_a_role_without_a_name_or_an_endpoint_is_refused`, `tests/test_addressing.py::test_a_role_key_is_refused_as_a_role_name` |
@@ -210,8 +210,8 @@ partition.
 
 `src/ration/publish.py`: a topic is one key under the `topic/` prefix holding a
 pointer to an artefact, and its generation is the store's version for that
-key. The artefact is an opaque reference, never parsed; content-named bytes are
-immutable and need no coordination.
+key. The artefact is an opaque reference the module never parses, and nothing
+about the artefact itself is coordinated.
 
 | Guarantee | Shown by |
 | --- | --- |
@@ -220,19 +220,19 @@ immutable and need no coordination.
 | Advancing spends the generation it advanced from, and a stalled publisher cannot overwrite a newer publication | `tests/test_publish.py::test_advancing_spends_the_generation_it_advanced_from`, `tests/test_publish.py::test_a_stalled_publisher_cannot_overwrite_a_newer_publication` |
 | A reader can advance from the generation it read | `tests/test_publish.py::test_a_reader_can_advance_from_the_generation_it_read` |
 | A publication does not expire: it stands across a clock advance that expires a leased address in the same store | `tests/test_publish.py::test_a_publication_outlives_what_an_address_does_not` |
-| An unreachable store publishes nothing, and does not read as a topic never published | `tests/test_publish.py::test_an_unreachable_store_publishes_nothing_and_reads_as_nothing_either` |
+| An unreachable store publishes nothing, and is not mistaken for a topic with no publication | `tests/test_publish.py::test_an_unreachable_store_publishes_nothing_and_reads_as_nothing_either` |
 | An ambiguous first publication or advance is recovered if it landed, carrying the new artefact, and not claimed if it did not | `tests/test_publish.py::test_an_ambiguous_first_publication_that_landed_is_recovered`, `tests/test_publish.py::test_an_ambiguous_first_publication_that_never_landed_is_not_claimed`, `tests/test_publish.py::test_an_ambiguous_advance_that_landed_carries_the_new_artefact`, `tests/test_publish.py::test_an_ambiguous_advance_that_never_landed_is_not_claimed` |
-| An ambiguous republish of the artefact already standing is not claimed, decided by the unmoved version alone | `tests/test_publish.py::test_an_ambiguous_republish_of_the_standing_artefact_is_not_claimed` |
+| An ambiguous republish of the current artefact is not claimed, decided by the unmoved version alone | `tests/test_publish.py::test_an_ambiguous_republish_of_the_standing_artefact_is_not_claimed` |
 | A publisher racing itself is not handed an artefact it did not publish, decided by the payload | `tests/test_publish.py::test_a_publisher_racing_itself_is_not_handed_an_artefact_it_did_not_publish` |
 | An empty topic or artefact is refused, and so is a topic key passed as a topic name | `tests/test_publish.py::test_a_topic_without_a_name_or_an_artefact_is_refused`, `tests/test_publish.py::test_a_topic_key_is_refused_as_a_topic_name` |
 | Under contention, no publication is silently destroyed | `tests/test_publish.py::test_no_publication_is_silently_destroyed_under_load`, with the negative control `tests/test_publish.py::test_a_non_atomic_store_advances_twice_from_one_generation` |
 
-**What it refuses.** A TTL: `publish` has no parameter for one. A retract: a
-publication is superseded, never deleted. Retrying a refused advance: the
-caller reads `current` and decides. A watch: consumers poll, so staleness is
-detectable, not pushed. Two keys moving together, such as an artefact and its
-index: that is a guarantee the contract refuses, and providing it would change
-the contract.
+**What it refuses.** A TTL: `publish` has no parameter for one. A retract:
+nothing deletes a topic, and a newer publication replaces an older one.
+Retrying a refused advance: the caller reads `current` and decides. A watch:
+consumers poll, and a stale pointer is found by reading, not announced. Two
+keys moving together, such as an artefact and its index: the contract offers
+no such operation.
 
 ## The frame: a checked carrier, with no state of its own
 
@@ -250,19 +250,19 @@ purpose under the same strict xfail:
 
 | Guarantee | Shown by | Violators it rejects |
 | --- | --- | --- |
-| The bytes present honour the declared length, exactly: a short header, a short body and trailing bytes are each refused; and neither passes the maximum, 1 MiB of body, refused as `oversized` from a header alone or from the input's length | `src/ration/conformance/test_frame_length.py::test_the_bytes_present_must_honour_the_declared_length` | `unchecked-length`, `ignores-trailing`, `no-ceiling` |
-| A flipped bit anywhere, header or body, is refused as corruption: the CRC-32 covers the header as well as the body | `src/ration/conformance/test_frame_integrity.py::test_a_flipped_bit_anywhere_is_refused_as_corruption` | `unchecked-crc`, `body-only-crc` |
+| The length the header declares matches the bytes that arrived, no more and no fewer: a short header, a short body and trailing bytes are each refused; and nothing past the maximum, 1 MiB of body, is accepted, refused as `oversized` from a header alone or from the input's length | `src/ration/conformance/test_frame_length.py::test_the_bytes_present_must_honour_the_declared_length` | `unchecked-length`, `ignores-trailing`, `no-ceiling` |
+| A flipped bit anywhere, header or body, is refused as corruption: the CRC-32 is computed over header and body alike | `src/ration/conformance/test_frame_integrity.py::test_a_flipped_bit_anywhere_is_refused_as_corruption` | `unchecked-crc`, `body-only-crc` |
 | An unknown frame version is refused as that, before its layout is assumed | `src/ration/conformance/test_frame_version.py::test_an_unknown_version_is_refused_before_its_layout_is_assumed` | `unchecked-version`, `crc-before-version` |
-| A kind the registry does not name is refused | `src/ration/conformance/test_frame_kind.py::test_an_unregistered_kind_is_refused` | `unchecked-kind` |
+| A payload kind missing from `KINDS` is refused | `src/ration/conformance/test_frame_kind.py::test_an_unregistered_kind_is_refused` | `unchecked-kind` |
 | A receiver accepts exactly the next sequence, or a higher epoch at count zero; a duplicate, a gap, a replay and an older epoch are refused, and the ledger moves on acceptance only | `src/ration/conformance/test_frame_sequence.py::test_exactly_the_next_sequence_or_a_fresh_epoch_at_zero` | `unchecked-sequence`, `counter-only`, `sequences-before-checking` |
-| Only a frame's one canonical text is read; a string longer than the largest frame's text is refused as `oversized` on its length, any other as `malformed-text`, both before a frame check runs, and a fault in the bytes under a well-formed text is refused by the frame | `src/ration/conformance/test_frame_text.py::test_only_the_canonical_text_is_read_as_a_frame` | `lenient-text`, `library-strict`, `skips-text-decode`, `accepts-non-canonical`, `drops-dangling-character`, `collapses-layers`, `walks-before-bounding` |
+| Only a frame's one canonical text is read; a text past the length of the largest frame's is refused as `oversized` before its characters are read, any other non-canonical string as `malformed-text`, both before a frame check runs, and damaged bytes inside a well-formed text are refused by the frame's own checks | `src/ration/conformance/test_frame_text.py::test_only_the_canonical_text_is_read_as_a_frame` | `lenient-text`, `library-strict`, `skips-text-decode`, `accepts-non-canonical`, `drops-dangling-character`, `collapses-layers`, `walks-before-bounding` |
 
 And against the reference codec alone:
 
 | Guarantee | Shown by |
 | --- | --- |
 | The header is the layout the module states | `tests/test_frame.py::test_the_header_is_eighteen_bytes_in_the_stated_layout` |
-| Decoding bytes or text never raises: every fault is a `FrameRefusal` with a control from the closed set `CONTROLS` | `tests/test_frame.py::test_decode_returns_on_anything_and_never_raises`, `tests/test_frame.py::test_decode_text_returns_on_anything_and_never_raises` |
+| Decoding bytes or text never raises: every fault comes back as a `FrameRefusal` whose control is one of `CONTROLS` | `tests/test_frame.py::test_decode_returns_on_anything_and_never_raises`, `tests/test_frame.py::test_decode_text_returns_on_anything_and_never_raises` |
 | Encoding raises on a sender's own mistake | `tests/test_frame.py::test_encode_raises_on_a_senders_own_mistake` |
 | The frame's refusals cannot be mistaken for a consumer envelope's | `tests/test_frame.py::test_the_frames_refusals_cannot_be_mistaken_for_the_envelopes` |
 | An epoch whose count is exhausted refuses to wrap | `tests/test_frame.py::test_an_exhausted_epoch_refuses_to_wrap` |
@@ -271,14 +271,11 @@ And against the reference codec alone:
 | Decoding reads any contiguous buffer as its bytes, and raises only on something that is not one | `tests/test_frame.py::test_decode_reads_any_contiguous_buffer_as_its_bytes`, `tests/test_frame.py::test_decode_raises_only_on_a_callers_wrong_type` |
 | A maximum that does not fit the four-byte length field is refused at import | `tests/test_load_time_checks.py::test_a_planted_wrong_fact_raises_at_import[frame-maximum-past-the-length-field]` |
 
-**What it refuses, and what that costs.** A sender identity in the header: which
-sender a frame belongs to is the receiver's knowledge, and a field the frame
-cannot verify is not carried. Any opinion about the body. A kind outside
-`KINDS`, a closed registry. Authentication: the frame carries a CRC, not a
-MAC. The CRC and the sequence say a frame arrived as sent, once; neither says
-who may send it. The stated cost:
-a receiver whose ledger has seen nothing takes the first frame as its baseline,
-so a replay against a fresh ledger is not caught
+**What it refuses.** A sender identity in the header. Any opinion about the
+body. A kind outside `KINDS`, a closed registry. Authentication: the frame
+carries a CRC, not a MAC. The CRC and the sequence say a frame arrived as sent,
+once; neither says who may send it. A receiver whose ledger has seen nothing
+takes the first frame as its baseline
 (`tests/test_frame.py::test_a_fresh_ledger_takes_the_first_frame_as_its_baseline`
 pins that behaviour).
 

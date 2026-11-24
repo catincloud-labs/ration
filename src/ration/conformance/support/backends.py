@@ -1,34 +1,35 @@
 """How each store the suite runs against is built, and what each is expected to fail.
 
-The suite's job is not to validate a backend. It is to **discriminate between
-backends**, so the registry a run hands it is the suite's actual subject:
-in-memory stores that should pass everything, a set that should each fail a
-named property and pass the rest, and the backends that are not fakes at all.
-This module builds each kind of case. `MEMORY_CASES` below is the package's
-own share of a registry: the in-memory store, the correct store with an
-unusual answer, and the violators, each paired with the property it breaks.
-Which cases a run judges beside these is its caller's to say, through
-`plugin.py`; this repository's are `tests/cases.py` in the source tree.
+The suite exists to tell stores apart, not to bless one (the README argues it,
+in the section on the suite as the first piece of work), so the registry a run
+hands it is the suite's actual subject: in-memory stores that
+should pass everything, a set that should each fail a named property and pass
+the rest, and the backends that are not fakes at all. This module builds each
+kind of case. `MEMORY_CASES` below is the package's own share of a registry:
+`MemoryStore`, `PreviousVersionStore`, and the violators, each paired with the
+property it breaks. Which cases a run judges beside these is its caller's to
+say, through `plugin.py`; this repository's are `tests/cases.py` in the source
+tree.
 
 A new backend is added to a caller's registry and runs what is already
-written. It does not get tests of its own, and if it needs a special case to
-pass, that is a finding about the backend or the contract rather than a
-fixture to write.
+written. It gets no tests of its own. One that can pass only with help written
+for it has shown something wrong with itself or with the contract, and no
+fixture is written to hide that.
 
 ## What a real backend demands of the harness
 
 Two assumptions that hold for an in-process fake do not survive contact with a
-server:
+server (the README's section on the real backend tells how they were found):
 
-- **A fake clock is not a clock.** `store_clock.advance(61)` is free against a
-  `FakeClock` and impossible against `now()` on a server. Time is passed by
-  `advance_store_time()`, which each backend implements the only way it can --
-  by moving a fake clock, or by actually waiting.
-- **An in-process seam does not exist across a socket.** Postgres has no
-  `_staged` to park in, because its atomic step is a single SQL statement on the
-  far side of a connection. `stepped()` returns `None` there, and that absence
-  is *evidence* rather than an exemption: a store with no window has nowhere to
-  be parked. The guard against abusing it lives in the stepper test.
+- **Time on a server cannot be moved by hand.** `store_clock.advance(61)` is
+  free against a `FakeClock` and impossible against `now()` on a server. Time
+  is passed by `advance_store_time()`, which each backend implements the only
+  way it can -- by moving a fake clock, or by actually waiting.
+- **There is no seam to park in once the step is behind a socket.** Postgres
+  has no `_staged`, because its atomic step is a single SQL statement sent over
+  a connection. `stepped()` returns `None` there, and that absence counts as
+  *evidence*, not as a pass granted: a store with no window has nowhere to be
+  parked. The guard against abusing it lives in the stepper test.
 """
 
 from __future__ import annotations
@@ -109,8 +110,7 @@ class BackendUnderTest:
     None of it is required of a backend and none of it appears in `Store`.
 
     A caller's `Case` builds one of these for its own store. What each field
-    must do, and which may be left out, is the README's case contract, under
-    *Running the suite against your own store*.
+    must do, and which may be left out, is the README's *The case contract*.
     """
 
     case: Case
@@ -155,7 +155,7 @@ class BackendUnderTest:
 
 @dataclass(frozen=True)
 class Case:
-    """One implementation, and the properties it is expected to fail."""
+    """One implementation, with the properties it should fail."""
 
     name: str
     violates: frozenset[str]
@@ -194,7 +194,7 @@ def _memory_case(
 
 
 def duckdb_case(name: str, violates: set[str]) -> Case:
-    """A backend with no server, which is the whole of what makes it interesting."""
+    """A backend with no server, which is exactly why it is worth running."""
 
     def build(gate: Gate | None = None) -> BackendUnderTest:
         # In-process is not the same as having a seam. DuckDB runs inside this

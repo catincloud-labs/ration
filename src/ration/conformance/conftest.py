@@ -2,8 +2,8 @@
 
 Every conformance test runs against every registered implementation, and each
 test declares the one contract property it decides. Where a registered store is
-expected to fail that property, the test is marked `xfail(strict=True)` -- so a
-violator that passes is reported as a **failure**, not as a pleasant surprise.
+expected to fail that property, the test is marked `xfail(strict=True)`, which
+turns a violator's pass into a **failure**, not a pleasant surprise.
 
 That inversion is the whole mechanism. Without it, a violator that has
 stopped violating anything -- because the property was weakened, a fixture

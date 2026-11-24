@@ -28,10 +28,10 @@ __all__ = ["PreviousVersionStore"]
 
 
 class PreviousVersionStore(MemoryStore):
-    """Correct. A conflict carries the version the key held before its current one.
+    """Correct. A conflict carries the key's previous version, not its present.
 
-    `Conflict` promises a version the key has held and not its current one, and
-    `PostgresStore` uses that latitude when two writers race. This store uses it
+    `Conflict` promises only some version the key once held, never its current
+    one, and `PostgresStore` uses that latitude when two writers race. This store uses it
     on every refusal of a key that has been written, racing or not: the version
     such a refusal reports is always one the key held and never the one it
     holds now.

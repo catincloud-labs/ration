@@ -16,7 +16,7 @@ class FakeClock:
 
     The starting value is arbitrary and non-zero: a store that forgets to record
     a deadline gets `None`, and a store that records one from a clock reading
-    zero looks the same as one that recorded nothing.
+    zero is indistinguishable from one that recorded nothing.
     """
 
     def __init__(self, now: float = 1_000_000.0) -> None:

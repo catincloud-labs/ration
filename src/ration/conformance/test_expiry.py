@@ -1,12 +1,13 @@
-"""Property 2: expiry is evaluated by the store, never by a caller.
+"""Property 2: the store decides when something has expired; no caller does.
 
-A backend may satisfy this natively or by evaluating a clock predicate at write
-time: the suite decides only what is observable, and refuses a backend that
-trusts a timestamp a client computed. That has a cost: it rules out any store
-that cannot express a
-predicate over its own clock, chosen deliberately, because the alternative is
-comparing wall clocks across hosts and clock skew is a defect that presents as
-a lease held twice. Violated by `client-expiry` and by `stale-clock`.
+Whether a backend does this with built-in expiry or by testing its own clock
+inside the write is its own business: the suite decides only what is
+observable, and refuses a backend that trusts a timestamp a client computed.
+The price is that a store unable to compare a deadline against its own clock
+cannot qualify at all. That price is accepted on purpose, since the only other
+way is for hosts to compare their wall clocks, and when two clocks disagree a
+lease ends up with two holders. Violated by `client-expiry` and by
+`stale-clock`.
 
 Two ways to get this wrong, and they need different instruments:
 

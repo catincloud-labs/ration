@@ -86,14 +86,10 @@ on is stated once, in `src/ration/contract.py`, and decided by
 
 ## Addressing a role, and why it is not a name record
 
-A role must not be pinned to a host by accident, and a caller that reaches a
-service by hostname has done exactly that. So services address each other by
-**role**, and something resolves the role to a host.
-
-**That something introduces no new state, which is why it is a module here
-rather than a service of its own.** *Who holds this role right now* is already
-lease state. The address rides as the lease's own payload, so a role is
-announced and held in one operation and there is nothing to keep in step.
+Services find each other by role rather than by hostname. `ration.addressing`
+turns a role into an endpoint by reading the lease on that role: the holder's
+endpoint is stored as the lease payload, so taking a role and publishing where
+it lives are a single write, and the module keeps no state beside the lease.
 
 ```python
 announce(store, "producer", "node-a.example:8080", holder="node-a", ttl=30.0)
@@ -102,46 +98,32 @@ resolve(store, "producer")
 #         holder='node-a', version=7)
 ```
 
-**The alternative was to publish the address into a name service and let
-callers resolve by DNS. It loses on a lesson that is not new.** The lease
-already decides who holds a role, so a name record is a *second copy of that
-fact*, and it goes stale in exactly the moment that matters: a failover. **Two
-copies of a fact is one fact and one stale claim.**
+`version` in that answer is the lease version it was read at. A callee that
+has already seen a later one can turn away a caller carrying an earlier one,
+which a DNS record, having no generation at all, cannot offer. Why the address
+is not kept in a name service instead, and what reading it from the store
+costs, is argued in the module docstring of `ration.addressing`: in short, a
+lookup now needs the store to be reachable, so a partition that already
+stopped a peer taking leases also stops it finding roles.
 
-The concrete form of the same objection is the `version` field above. It is
-the lease generation the answer was read at, so a caller can be refused by a
-callee that has seen a newer one. **A cached name has no generation**, so a
-stale holder keeps being reachable and nobody can tell. An address without a
-generation is a guess with good manners.
+`announce` insists on an expiry even though the lease layer accepts
+`ttl=None`, and its docstring says why. `resolve` goes to the store on every
+call and keeps nothing between calls.
 
-The network still carries the packets. It is the **transport**; it is not the
-register of who holds what, and those are different jobs.
-
-**What it costs.** Service addressing now depends on the coordination store
-being reachable. A store that refuses under partition already meant a peer
-could take no lease while it was unreachable; it now also means the peer can
-resolve no role. That **widens the blast radius of a failure a deployment has
-already accepted** rather than introducing a new one, which is a smaller claim
-than "no new risk" and is the honest one.
-
-**`ttl` is required here where the lease layer allows `None`.** A claim with no
-expiry keeps answering for a holder that stopped existing, which is the
-stale-name failure arriving through the door this module was built to close.
-
-**The expiry assertions are backed by a control that reproduces the defect.**
-Most of `tests/test_addressing.py` asserts an address *stops* answering, and a
-test asserting an absence can pass while looking at nothing. So a deliberately
-caching resolver is **required to keep answering** for an expired role; if it
-ever stops, the tests above it are measuring the passage of time rather than
-the store.
+**The expiry tests carry a control built to fail them.** Most of
+`tests/test_addressing.py` checks that an address stops resolving, and a test
+of an absence can pass while looking at nothing. So the same file runs a
+resolver that caches on purpose and requires it to keep answering after a
+role's lease has lapsed; were it ever to stop, the other tests would be timing
+the clock rather than reading the store.
 
 ## Publishing a generation pointer, and why it is not a lease
 
-A producer publishes an artefact, consumers act on it, and a reader needs to
-tell a stale artefact from a current one. `publish.py` gives the pointer a
-**generation**: a compare-and-set on a key holding a generation and a pointer,
-where the generation is the store's own version, the same number
-`addressing.py` carries as `Address.version`.
+When a producer publishes something consumers act on, a reader has to be able
+to say whether what it holds is the latest. `ration.publish` keeps one key per
+topic, holding the publisher's token and a reference to the artefact, and the
+topic's **generation** is that key's store version: the same counter
+`Address.version` reports for a role.
 
 ```python
 made = publish(store, "config", "sha256:9f2c...", "producer", generation=UNPUBLISHED)
@@ -150,224 +132,141 @@ current(store, "config")
 #             generation=1, artefact='sha256:9f2c...')
 ```
 
-**Only the pointer lives here, because the artefact half has nothing to
-coordinate.** Once published bytes are named by content they are immutable,
-and immutable data needs no lock: lockfiles and atomic swaps exist only for an
-artefact that mutates in place.
+Only the pointer is coordinated. An artefact named by its content cannot change
+once written, so there is nothing about it to lock.
 
-**The differences from a lease are the design, and both run in the refused
-direction.** A publication takes **no TTL, structurally**: there is no
-parameter to pass, where `announce` *requires* one. An address is a claim
-about a live process, a publication is a fact about content, and an expiring
-pointer would vanish without a successor and read as a topic never published.
-And there is **no retract**: a publication is superseded, never deleted, which
-also keeps dormant the resolve-after-deletion edge `lease.py` records as *"a
-real edge for any consumer that does need the distinction."* The test for
-non-expiry calibrates its own clock:
-a leased address under the same store must expire across the same advance, so
-the publication standing through it is a decision rather than a default.
+**It differs from a lease in two ways, and both are refusals.** `publish` has
+no TTL parameter at all, where `announce` demands one: a role describes a
+running process that can vanish, a publication describes content, and a
+pointer that lapsed would look exactly like a topic nobody had published. And
+nothing retracts a publication; a newer one replaces it. Since nothing here
+deletes, the release edge `lease.py` records, where an applied delete and a key
+someone else took read alike, never comes up. The test for non-expiry checks
+its own clock first: an address leased in the same store has to lapse over the
+same advance, so a publication still standing afterwards shows a decision and
+not a clock that never moved.
 
-**What building it found: recovery from an ambiguous advance needs two checks,
-and each has a case the other cannot decide.** A publisher is its own
-predecessor as the *routine* case, since every advance rewrites a key already
-holding its token, and it rewrites with **different payloads**, which the lease
-never did. So `resolve`'s APPLIED is no longer enough to hand back a handle: a
-publisher identity racing itself (two replicas, or a retry racing its original)
-can have its lost write attributed to the write that survived, and only the
-**payload** distinguishes them. The other case: a recovery built purely on the
-follow-up read, token and artefact both matching, decides one case wrongly, an
-ambiguous **republish of the standing artefact**, where nothing in the store
-distinguishes the lost write and only the unmoved version says it never
-landed. Both cases are pinned in `tests/test_publish.py`. The contract is
-untouched by both: the information was in the store the whole time.
+**Building it found that recovering an ambiguous advance takes two checks,
+each settling a case the other cannot.** Every advance after the first
+rewrites a key that already carries this publisher's token, usually with a new
+artefact, which no lease does. When two writers share one publisher identity,
+as two replicas do, or a retry and its original, the contract's verdict alone
+can credit the lost write with the one that landed, and only comparing the
+stored artefact tells them apart. The other way round, an ambiguous republish
+of the artefact already in place leaves token and artefact both matching, and
+only the version that did not move shows the write never landed, so judging by
+the read-back alone gets it wrong. `tests/test_publish.py` pins both cases,
+the module docstring of `ration.publish` walks through them, and the contract
+did not change: everything needed was already stored.
 
-**Consumers poll.** The contract offers no watch, so "has the pointer moved?"
-is a read and a comparison, repeated. Staleness is *detectable*, not *pushed*;
-a cache added to hide the cost would be the defect the addressing section
-above documents refusing.
+**Readers poll.** The contract has no watch, so noticing a new generation means
+reading again and comparing. A stale pointer can be detected, never announced,
+and the same docstring says why no cache is added to hide the polling.
 
-**The limit, stated before it is needed:** a pointer that needs two keys to
-move together, an artefact and its index published atomically, needs a
-guarantee the contract deliberately refuses. That would be a change to the
-contract, not a quiet widening here.
+**Where it stops:** publishing an artefact together with its index would need
+two keys to change atomically, which the contract does not offer, so that would
+be a change to the contract rather than to this module.
 
 ## The frame, and the suite of frames built wrong on purpose
 
-The rule the frame serves: a payload that carries a claim of authority from one
-node to another (a fencing claim, a vote, a command one node sends another)
-rides inside a frame, and so does every new payload between nodes; a payload
-already framed stays framed. The rule says where a payload belongs, not where
-every one is today: a consumer moves a route onto the frame in its own change,
-so a claim can still cross outside a frame while that move is under way. The
-frame is checked before any payload is decoded, and this repository owns the
-frame. `src/ration/frame.py` is that and nothing beyond it: no route, no
-transport, no consumer.
+`ration.frame` is the envelope one node wraps around a message to another when
+that message asserts authority, such as a fencing claim, a vote or a command,
+and around every new payload one node sends another. It keeps no state, and it
+knows nothing of routes, transports or consumers: its whole job is to be
+checked before the payload inside is looked at. The module's docstring
+(`help(ration.frame)`) is where each choice below is argued, with the header's
+layout and the order its checks run in; this section is the outline.
 
-Two kinds of existing payload are outside the rule on purpose. **A record in
-the coordination store** can carry a claim, since its version is a fencing
-token, but it crosses between nodes through the store rather than as a
-message, and property 1 already orders it (`src/ration/conformance/test_version.py`);
-a frame's sequence beside it would be a second ordering of one record. **The
-telemetry an existing shipper sends** carries no claim, and the frame's
-sequence rule would break it: a receiver accepts exactly the next count
-(`src/ration/conformance/test_frame_sequence.py`), so one lost batch would leave
-every later batch refused as a gap until the sender started a new epoch or the
-receiver a fresh ledger.
+- **What is left out, deliberately.** A record in the store already has an
+  order, property 1's version, so framing it would order one record twice. Telemetry from an existing shipper claims nothing, and the frame's
+  strict sequence would turn one lost batch into a run of refusals.
+- **The header** is eighteen bytes, big-endian: the frame's own version, the
+  payload kind, a 64-bit sequence per sender, the length of the body, and a
+  CRC-32 that covers the header too, not only the body. What the body means
+  is not the module's business.
+- **One ceiling for every kind**: 1 MiB of body, 1,048,576 bytes. A header
+  that declares more is refused as `oversized`, the tenth control, without
+  reading on, and `encode` will not build a frame that large.
+- **A text form**, for a route whose request has no HTTP body: the same v1
+  frame, written as unpadded base64url into a request header, with the same
+  checks run on the bytes it decodes to. The read is strict to the point of
+  canonical, so each frame has one text. A string past 1,398,126 characters,
+  the largest frame's text, is `oversized` by its length; any other string
+  that is not a frame's one text is `malformed-text`, the ninth control. The
+  standard library's base64 decoders, its strict settings included, each
+  accept some text this read refuses, so its default read and its strict
+  base64url setting are both registered as violators.
+- **The sequence** puts an epoch in its high word and a count in its low one.
+  A receiver takes the next count, or count zero of a newer epoch. A lease
+  version serves as the epoch, so a sender that restarts and re-announces its
+  role needs nothing saved. The ledger moves only when a frame is accepted:
+  resending a refused frame succeeds, and resending an accepted one is caught
+  as a duplicate.
+- **What it costs, stated.** An empty ledger trusts its first frame, so a
+  replay to a receiver starting from a fresh ledger gets through. The header names
+  no sender. The registry of kinds is closed, at five codes.
 
-A frame is an eighteen-byte big-endian header (the frame's own version, the
-payload kind, a 64-bit per-sender sequence, the body length, and a CRC-32 over
-the header and the body) around a body the module never looks inside. The
-checks run in a stated order, and the order is the contract a v2 leans on: a
-frame of a version this reader does not speak refuses as exactly that, before
-anything assumes v1's layout. The layout table and the order are in the module
-docstring, once.
-
-**A frame states its maximum: 1 MiB of body (1,048,576 bytes), for every
-kind.** It is the most any receiver must accept. The length field is four
-bytes, so without it a header could declare 4 GiB and a reader would buffer
-what it was told. A frame carries a request or a fingerprint, never data, so
-the number starts generous: lowering it later breaks senders, and raising it
-needs every receiver moved first. A receiver may still cap a kind tighter on
-its own side, and `encode` raises on a longer body. The reader refuses past
-it as `oversized`, the tenth control, after the version check, since the
-field is a length only once the version is known, and before anything
-touches the body: the header is read in place, the whole input is bounded by
-its length, and only then is it copied. A header alone that declares too much
-is refused, so a receiver need not read the body. A declared body past the
-maximum and more bytes than the largest frame holds are one observation and
-carry one control. The second is not left for `trailing-bytes`, which reads a
-whole frame with garbage after it, and can say so only after the input is
-copied whole and the CRC has passed over the declared span.
-
-**A frame can also travel as text**, in a request header, for a route that
-takes no HTTP body. The frame inside is an unchanged v1 frame, and its eight
-checks run on its bytes as they would on a body's; only the carrier differs.
-The text form is base64url (RFC 4648, section 5) with no padding, so a frame
-of `n` bytes is `ceil(4n / 3)` characters and the header-only frame is 24. The
-decode is strict, and strict means canonical: a frame has exactly one text,
-the one `encode_text` writes. A string longer than the largest frame's text,
-1,398,126 characters, is refused as `oversized` on its length, before a
-character of it is read, and any other string as `malformed-text`, the ninth
-control; both come before any frame check runs. Which header
-carries the text is the consumer's transport choice and is named on its side,
-not here.
-
-The strictness is the property, because the obvious decoders are not strict.
-Python's default `base64.b64decode` drops a character outside its alphabet and
-returns the bytes the text held without it. Its strict base64url setting
-(`validate=True` with base64url's `altchars`) still takes padding and the
-standard alphabet's `+` and `/`. And every setting, `binascii.a2b_base64` with
-`strict_mode=True` included, reads a last character whose unused bits are set
-as the same bytes as the canonical one, so two texts decode to one frame; the
-text property asserts that reading before it relies on it. The reader
-therefore checks every character against base64url, decodes, re-encodes, and
-refuses any text that does not come back as itself.
-
-**The sequence is the check with a live failure mode**, because HTTP frames one
-request and neither orders nor de-duplicates requests from a sender: a retried
-`POST` is a duplicate the transport delivers happily. The rule for a sender
-that restarts is written into the sequence itself. The high word is the
-sender's **epoch**, the low word its count within it, and a receiver accepts
-exactly the next count or a higher epoch at count zero. A lease version is an
-epoch already: property 1 makes it monotonic and never reused, so a sender
-that re-announces its role after a restart holds an epoch strictly above any it
-held before, without persisting anything. An older epoch is refused as
-replayed, which is the stalled holder a fencing token exists to refuse,
-arriving on the wire. And **the ledger moves on acceptance only**, so the retry
-of a frame that was refused carries the same sequence and is taken for the
-first time, while the retry of a frame that was accepted is refused as the
-duplicate it is. The two retries are byte-identical; the ledger is what tells
-them apart.
-
-The suite is the price of the word *checked*: every hostile case has a
-known-negative that fails without the check beside a known-positive that passes
-with it. The known-negative is not a bad frame; it is a **reader without the
-check**, one per check, each the shape a shortcut takes:
+The suite is what *checked* has to cost. For each check there is a reader that
+leaves exactly that check out, shaped like the shortcut someone would take, and
+the suite must reject it while the reference reader passes:
 
 | Frame property | What it fixes | Hostile cases | The codec that must fail it |
 | --- | --- | --- | --- |
-| 1 | The bytes present honour the declared length, exactly, and neither passes the maximum | truncated mid-header, truncated mid-body, length larger than present, length smaller than present, a body of exactly the maximum (accepted), one byte past it, a header alone declaring past it, an honest header followed by more bytes than the largest frame holds | `unchecked-length` - trusts the transport, so a short header is an exception and a short body is misnamed; `ignores-trailing` - takes the declared body and discards the rest; `no-ceiling` - takes the four-byte field's own limit as the frame's, so a frame past the maximum is accepted and a header declaring one is told to read on |
-| 2 | A flipped bit anywhere is refused as corruption | a bit flipped in the body, in the sequence, in the epoch, in the kind byte | `unchecked-crc` - carries the CRC and never compares it; `body-only-crc` - a CRC over the body alone, which leaves the header bare |
-| 3 | An unknown version is refused as that, before its layout is assumed | version ahead of the reader, version ahead with the CRC moved, a header alone of a version ahead whose length slot is past v1's maximum, version zero | `unchecked-version`; `crc-before-version` - every check present, only the order wrong |
-| 4 | An unregistered kind is refused | kind unknown to the registry, kind zero | `unchecked-kind` |
-| 5 | Exactly the next sequence, or a fresh epoch at zero | duplicated, skipped, behind, restart at a fresh epoch, an older epoch replayed, a new epoch not at zero, retry of a refused frame | `unchecked-sequence`; `counter-only` - 32 bits and no restart rule, so it turns the honest restart away; `sequences-before-checking` - the right rule, applied before the CRC has spoken |
-| 6 | Only a frame's canonical text is read, and any other string is refused as text | a character outside the alphabet, whitespace, a character outside ASCII, padding, the standard alphabet's `+` and `/`, a length one past a multiple of four, a second text of the same frame at every unused bit of both length classes; a string one character longer than the largest frame's text, ending outside the alphabet, refused on its length as `oversized`; and a well-formed text of bad bytes, refused by the frame rather than the text | `lenient-text` - the standard library's default decode, which drops what it does not recognise; `library-strict` - its strict base64url setting, which still takes padding and both alphabets; `skips-text-decode` - hands the header to the frame reader undecoded; `accepts-non-canonical` - every character checked against base64url and the round trip skipped; `drops-dangling-character` - reads a dangling character as nothing, as Node's `Buffer` does; `collapses-layers` - answers the frame's refusals as the text's; `walks-before-bounding` - reads every character of a string before it asks the string's length |
+| 1 | The length in the header matches the bytes that arrived, and stays under the ceiling | a header cut short; a body cut short; a length that claims more, or less, than arrived; a body at the ceiling (taken) and one byte over it; a lone header that declares too much; an honest header with more bytes behind it than the largest frame holds | `unchecked-length`, which believes the transport; `ignores-trailing`, which keeps what the length names and drops the remainder; `no-ceiling`, whose only limit is what four bytes can count |
+| 2 | Any single flipped bit is caught as corruption | one bit changed in the body, the sequence, the epoch or the kind byte | `unchecked-crc`, which never checks the CRC it carries; `body-only-crc`, whose CRC leaves the header out |
+| 3 | An unknown version is refused under that name, before any v1 layout is assumed | a version above the reader's, the same with the CRC moved, a lone header of a later version whose length slot exceeds v1's ceiling, version zero | `unchecked-version`; `crc-before-version`, every check present in the wrong order |
+| 4 | A kind missing from the registry is refused | a kind the registry lacks, kind zero | `unchecked-kind` |
+| 5 | A sender's next frame is the next count, or count zero of a newer epoch | a repeat, a skip, an earlier count, a clean restart, an old epoch replayed, a new epoch not at zero, resending a refused frame | `unchecked-sequence`; `counter-only`, a 32-bit count that rejects an honest restart; `sequences-before-checking`, the right rule at the wrong moment |
+| 6 | A header string is read only when it is a frame's one canonical text | characters outside the alphabet, whitespace, non-ASCII, `=` padding, `+` and `/`, a length one over a multiple of four, every variant spelling of a frame through its unused bits; a string one over the longest text whose last character is invalid, which must be `oversized`; a clean text of damaged bytes, which the frame must refuse | `lenient-text` (the library's default read); `library-strict` (its strict base64url flag); `skips-text-decode` (no decode at all); `accepts-non-canonical` (no round trip); `drops-dangling-character` (Node's habit); `collapses-layers` (every refusal named as text); `walks-before-bounding` (length checked last) |
 
-The rows are **Frame property 1 to 6**, in this order, and that is the
-number each module in `src/ration/conformance/test_frame_*.py` cites. It is not
-the order in which `src/ration/frame.py` runs its eight checks, which is a
-different list and says so.
+**Frame property 1 to 6** are these rows, in this order, and each module in
+`src/ration/conformance/test_frame_*.py` cites its row by that number. The
+reader's own checks are a separate, longer list, numbered in the module
+docstring, which says how the two line up.
 
-One hostile case is separated by no registered reader: a character outside
-ASCII, which every reader here refuses as text because the standard library
-raises on it. A reader that normalised the text to NFKC first would fail it;
-none is registered, and `src/ration/conformance/test_frame_text.py` says why.
+One hostile case, a character outside ASCII, has no reader that fails it: every
+reader here is built on a decoder that raises there. The text property's
+module docstring says why no normalising reader is registered.
 
-Same mechanism as the store suite, not a copy of it: one marker, one strict
-xfail, one set of bookkeeping assertions in
-`tests/test_the_suite_discriminates.py`, parametrised over two registries. A
-run reports one `xfailed` line per codec per property it drops, which is one per
-class in `src/ration/conformance/frame_violators.py`
-(`grep -c '^class .*(FrameCodec)' src/ration/conformance/frame_violators.py`); the run is the
-count, not this sentence.
+The machinery is the store suite's: one marker, one strict xfail, one set of
+bookkeeping assertions in `tests/test_the_suite_discriminates.py`, run over both
+registries. A run reports one `xfailed` line per codec per property it drops, so
+one per class in the violators module
+(`grep -c '^class .*(FrameCodec)' src/ration/conformance/frame_violators.py`);
+the run is the count, not this sentence.
 
-**What building it found.** The first run of the suite had
-`sequences-before-checking` failing the **four** properties it does not claim,
-beside the one it does. Every property test ends each refusal with the healthy
-frame accepted, and a reader that consumes a sequence on refusal breaks the
-retry after *every* refusal, so it failed length, integrity, version and kind
-for a defect that is entirely about the ledger. A violator that fails
-everything proves nothing about which check caught it. The fix is in
-`src/ration/conformance/support/codecs.py`: every property that is not about sequence is
-decided against a ledger that has seen nothing, so a sequence refusal cannot
-masquerade as theirs, and the one property that is about the ledger names its
-sender on every decode. The same run had `unchecked-crc` red on the
-**sequence** property, because that test's "refused frame" was refused by the
-CRC; it is now a truncation, which every reader refuses whichever check it is
-missing, so the only thing decided there is what a refusal does to the ledger.
-Both are the same lesson the store suite records about `conflict-writes`,
-arriving from the other direction: the property, not the assertion, is the
-unit, and a property test must hold every other property still.
+**What building it found.** On its first run `sequences-before-checking`,
+written to break the sequence property, also broke length, integrity, version
+and kind. Each property test ends a refusal by offering the healthy frame
+again, and a reader that spends a sequence on a refused frame turns down that
+healthy frame every time. A violator that every test rejects says nothing about
+which check rejected it. The repair, in the codec registry: every property but
+the sequence's decodes against an empty ledger, and the sequence property
+names a sender for each decode. On the same run `unchecked-crc` failed the
+sequence property, because the frame that test refused was refused by its CRC;
+it is now a truncated frame, which every reader refuses whatever check it is
+missing. It is the store suite's `conflict-writes` lesson again, from the other
+side: the property is the unit, and its test has to hold every other property
+still.
 
-The text property's first run taught it a third time. Its arm for a fault in
-the bytes under a well-formed text asserted `crc-mismatch`, so `unchecked-crc`
-and `body-only-crc` failed a text property for a CRC defect. That arm now
-asserts only that the refusal is a frame control rather than the text's, and
-`tests/test_frame.py` pins the exact control on the reference reader. The
-second run had `body-only-crc` red on the standard-alphabet arm: the frame's
-only `-` had been in the CRC's characters, which that reader writes
-differently, so the arm went vacuous for it and its own guard said so. The
-frame's epoch is now chosen to put a `_` in the sequence field, in bytes every
-reader writes alike.
+The text property taught it a third time. Its arm for bad bytes under good text
+expected `crc-mismatch`, so the two CRC violators failed a text property for a
+CRC defect. The arm now asks only that the refusal be the frame's rather than
+the text's, and the reference reader's exact control is pinned in
+`tests/test_frame.py`. A second run found `body-only-crc` passing the standard-alphabet arm
+vacuously: the frame's one `-` sat in the CRC's characters, which that reader
+writes differently, and the arm's own guard reported it. The epoch was then
+chosen to put a `_` in the sequence, where every reader writes the same bytes.
 
-**Three costs stated rather than hidden.** A ledger that has seen nothing takes
-the first frame as its baseline, so a replay against a fresh receiver is not
-caught; the alternative would turn every receiver restart into a forced restart
-of every sender. The header carries **no sender field**: which sender a frame
-belongs to is the receiver's knowledge, and a sender identity in the header
-would be a claim the frame cannot verify. And the kind registry is **closed and
-short**: five kinds, a consumer's fingerprint envelope by the envelope's own
-name, one per body-carrying route of a consumer's service, and `role-claim`.
-Their codes are on the wire and their names label them, so they do not change.
-
-`role-claim` is a claim-only body, the fencing claim a sender presents and
-nothing beside it: the kind a route with no HTTP body takes, its frame carried
-as text. It is one code for every such route rather than one per route. A code
-means one body shape and this is one shape, and the frame carries a CRC, not a
-MAC, so anyone who can build a frame can build it with any registered kind: a
-code per route would catch only a sender wired to the wrong route. The claim
-rides in the body for the same reason the header carries no sender: the
-header carries only fields the frame itself checks, and a claim there would be
-one the frame cannot verify. As body bytes it is opaque to the frame like any
-body, and the CRC and the sequence say of it only what they say of every
-frame, that it arrived as sent, once; whether the sender may present it is the
-consumer's to judge.
-
-A sixth kind lands here before anything sends it. A code nobody sends is inert,
-while a decoder selecting on a code this registry does not name has every
-framed request refused as `unknown-payload-kind`; so the row comes first, and a
-consumer that installs this package at a commit sees it when it moves to that
-commit. `src/ration/frame.py` carries the argument beside the registry.
+**The kinds.** Five codes: a consumer's fingerprint envelope, named as the
+envelope names itself; one for each of three body-carrying routes of a
+consumer's service; and `role-claim`, a body holding only the fencing claim a
+sender presents, which is what a body-less route sends as text. A code is on
+the wire and never changes meaning. A new kind is registered here before
+anyone sends it, since an unused code harms nothing while a decoder keyed on an
+unregistered one sees every frame refused; the comments beside `KINDS` in
+`src/ration/frame.py` give the full reasoning, including why `role-claim` is one
+code rather than one per route.
 
 ## The name
 
@@ -408,10 +307,9 @@ runs its own self-test before it runs in CI: proof it can fire and proof it can
 go quiet.
 
 **Two of those rows are one implementation short of the ideal, and it is worth
-knowing which.** `conflict-writes` is declared against two properties rather
-than one, because a store that writes when it should not destroys the winner's
-value in any race it loses: there is no interleaving in which it is atomic. A
-violator that broke only the reply would be better and does not exist.
+knowing which.** `conflict-writes` breaks atomicity as well as the reply, and
+is registered for both; `ConflictWritesStore`'s docstring in
+`src/ration/conformance/violators.py` says why no narrower violator exists.
 
 **The version property is still short its most likely violator.** Restoring a
 store from a backup can replay or invalidate lease versions, so a restore is
@@ -424,32 +322,28 @@ Stated here so the gap is a known absence rather than a discovery made during
 a recovery.
 
 **A claim the suite did not cover was false for as long as nobody looked.**
-`Conflict` and the Postgres `compare_and_set` both stated that a conflict
-reports the version the key had moved to. It does not. Under concurrency
-`PostgresStore` reports the version the caller came **from**: two writers from
-version 1 leave the loser holding `Conflict(1)` while the key is at 2; two
-creators leave the loser holding `Conflict(0)` while the key is at 1. The
-statement that decides the outcome and the statement that reports the version
-share one snapshot, and only the `UPDATE` half gets `EvalPlanQual`.
+`Conflict` and the Postgres `compare_and_set` both once said that a conflict
+carries the version the key had moved to. Under concurrency it does not:
+`PostgresStore` hands back the version the losing caller started **from**,
+both for updaters and for creators racing from absence. `Conflict`'s docstring
+in `src/ration/contract.py` gives the two cases and why the server behaves so;
+here the part worth adding is that only the `UPDATE` half of the statement
+gets `EvalPlanQual`.
 
-**Not a contract defect.** The contract requires a conflict to be reported
-*without writing*, which holds, and asks of the version it carries only that
-the key has held it, which holds too.
+**Not a contract defect.** What the contract asks of a conflict is stated on
+`Conflict`, and both demands hold.
 `src/ration/conformance/test_compare_and_set.py` decides both, accepting any version
 the key has held, and `echoes-expected` is the store it rejects for reporting
 one the key never held. **The acceptance has a store of its own.**
-`previous-version` (`src/ration/conformance/permitted.py`) is registered with no violations and,
-once a key has been written, answers every refusal with the version the key
-held before its current one. Every other correct store answers a refusal that
-races nothing with the current version. So a test tightened back to the
-current version fails `previous-version` and no other registered store, and
-loosening the assertion is a change the suite can see being undone. To watch
+`previous-version` (`src/ration/conformance/permitted.py`) is registered with
+no violations; its docstring says what it answers and why a store like it
+exists. To watch
 it, replace the assertion after the stale-expectation refusal with
 `assert refused == Conflict(created.version)` and run
-`pytest -rA src/ration/conformance/test_compare_and_set.py`. Making a conflict's
-version exact costs either a second round trip or an
-`ON CONFLICT DO UPDATE` that **writes in order to read**, which is precisely
-what `conflict-writes` exists to fail. So the claims were corrected and the
+`pytest -rA src/ration/conformance/test_compare_and_set.py`. An exact version
+would take either another round trip or an upsert that **writes in order to read**,
+which is precisely what `conflict-writes` exists to fail; `Conflict`'s
+docstring prices both. So the claims were corrected and the
 behaviour pinned by `tests/test_postgres_conflict_version.py`,
 deterministically, with a held row lock rather than a race. A caller needing
 the current version must read.
@@ -470,31 +364,17 @@ against `naive`, the one implementation that must never pass, at the rate
 recorded under **The first calibration** below. A suite that had merely *run*
 it would have shipped that green as evidence.
 
-Threads or a deterministic interleaving? **Both, doing different jobs.** The
-interleaving is the gate: it parks one operation at the last moment before its
-atomic step, runs another **to completion**, and, the part that matters,
-asserts that the interleaving happened. It is needed by two properties rather
-than one, and the second is `stale-clock`: a store that reads its own clock and
-then evaluates expiry somewhere else defeats clock injection entirely, because
-the reading it used was never the caller's.
-
-The seam sits *outside* every lock, and that placement is the reason the stepper
-is deterministic rather than lucky. A parked operation holds nothing, so the
-second one cannot be blocked by it and is waited for rather than given a window
-and assumed. Giving it a fixed fraction of a second and carrying on either way
-would reintroduce the failure this section argues against: a run that missed
-its own interleaving, reporting green.
-
-**A hammer can tell that it raced, and not whether it raced inside the
-window.** A writer refused because another moved the version between its read
-and its write was refused by a genuine overlap, so the threaded test counts
-refusals and reports *"the probe never raced"* instead of a verdict when there
-were none. What it cannot do is land inside the read-to-write window on
-demand: a violating implementation that is never made to race inside it has
-not been shown to survive one. So threads are a **probe, not a gate**: they
-reach non-atomicity inside a real store that no client-side stepper can, and
-they carry a false-pass rate the suite states rather than implies. The order of
-the two checks is in `src/ration/conformance/test_atomicity.py`'s docstring.
+Threads or a deterministic interleaving? **Both, doing different jobs**, and
+the module docstring of `src/ration/conformance/test_atomicity.py` is where
+each job, and the order the two checks run in, is argued. In brief: the
+interleaving is the gate, deterministic because its seam holds no lock, and it
+proves the interleaving it arranged took place. Two properties need it, the
+second being `stale-clock`: a store that reads its own clock and then judges
+expiry somewhere else defeats clock injection entirely, because the reading it
+used was never the caller's. Threads are a **probe, not a gate**: they reach
+non-atomicity inside a real store that no client-side stepper can, they can
+show that a race happened but not that it landed where a violator is weak, and
+the false-pass rate they carry is stated by the suite, not implied.
 
 **The first calibration is the finding worth keeping.** On the interpreter's
 default switch interval, the hammer **never once** caught the naive backend: it
@@ -518,22 +398,16 @@ finding about the backend or the contract, not a fixture to be written.
 
 ## Every service is one compare-and-set
 
-- **The lease**: `acquire`, `renew` and `release`, each of them one
-  compare-and-set, and **no new method on `Store`**. A contract is tested by
-  what its first real consumer needs that it lacks, and the answer was
-  **nothing**: the refusals held, at a cost of one extra read on the ambiguous
-  path.
-- **The pool**, which is what the name promises. The contract forced the design
-  rather than leaving it open: expiry is evaluated by the store, and a store
-  expires *keys* rather than elements inside a value, so a pool of N grants on
-  one key would have its deadlines evaluated by whoever read it, which is
-  `client-expiry`, a violator the suite already rejects. So **a pool is N keys,
-  each one of these leases**, and capacity is the number of keys rather than a
-  number written down anywhere. The evidence is what `pool.py` does not
-  contain: no `renew` and no `release`, because a pool grant *is* a lease.
-- **The generation pointer**: `publish.py`, versioned published state as a
-  compare-and-set on one key, the same primitive as a lease rather than a
-  second one.
+- **The lease** (`ration.lease`): `acquire`, `renew` and `release` are one
+  compare-and-set apiece, and `Store` gained no method for them. What a
+  contract's first real consumer is missing is the test of the contract, and
+  here it was missing **nothing**: the refusals held, and the only price was a
+  second read when an answer is lost.
+- **The pool** (`ration.pool`), the thing the name promises: **N separate
+  leases**, one key each, with no `renew` or `release` of its own. Why the
+  contract forces that shape is `pool.py`'s module docstring.
+- **The generation pointer** (`ration.publish`): published state with a
+  version, kept on one key by the same compare-and-set a lease uses.
 - **The frame** adds no key and no operation, and leans on the contract exactly
   once, for the epoch a restarted sender needs.
 
@@ -549,11 +423,10 @@ and both were about the *suite* rather than about Postgres:
   statement. That skip removes an instrument, never a verdict: `postgres-naive`
   has no seam either and is still expected to fail, on the threaded probe.
 - **A store that passed every property still could not survive being asked.**
-  The first backend opened a connection per operation, which is the obvious
-  shape and reads as the careful one. The threaded probe put about 1,600
-  connections through it, and the *next* run failed on
-  `Address already in use`: every one of them held an ephemeral port in
-  `TIME_WAIT`. Nothing in the contract catches that; there is no property about
+  The first backend opened a connection per operation. The threaded probe put
+  about 1,600 connections through it, and the *next* run failed on
+  `Address already in use`; `PostgresStore`'s docstring gives the mechanism
+  and why reuse is now required. Nothing in the contract catches that; there is no property about
   exhausting the machine. It was found by running the real thing under real
   load, which is the whole argument for deciding a backend by conformance
   result rather than by comparison. `PostgresStore` reuses one connection per
@@ -589,18 +462,16 @@ key constraint` under load, from `tests/test_lease.py`, after the conformance
 run had pronounced the same path correct. The cause was in the suite's own
 instruments: **every concurrent test seeded its key single-threaded and then
 raced from that version**, so the suite had only ever raced *updaters*. The
-`INSERT` branch had never been entered by two callers at once.
+`INSERT` branch had never been raced at all.
 `test_two_creators_racing_from_absence_do_not_both_apply` closes it, and the
 control is the usual one: with the defect reintroduced the new test goes red
 while the entire pre-existing suite passes green.
 
 **The second-order lesson is about probes, not about DuckDB.** The first draft
 of that test was threaded only. It caught `naive` every run in isolation and then
-let it through inside the full suite, because a creation can be raced only once
-per key and a loaded machine serialises the racers. A single shot per round is
-not something a strict xfail can stand on, so the test uses the deterministic
-stepper wherever a seam exists and the probe only where none does, the split
-the rest of the atomicity file already uses.
+let it through inside the full suite. So the test now gates through the
+deterministic stepper wherever a seam exists and probes with threads only where
+none does; its docstring says why a creation race forces that split.
 
 ## What the first consumer found
 
@@ -608,15 +479,12 @@ Both findings are the **same lesson as the `Conflict` correction above**,
 arriving from a new direction: a property nothing asserts on is a property the
 code is free to be wrong about, and the prose will agree with it the whole time.
 
-**`resolve` decided by token before version, and that is wrong for a caller
-that is its own predecessor.** Property 4's remedy recognises the caller's own
-write by finding its token in the store. A renewing lease already has its token
-there, from the grant before, so a renew whose answer was lost resolved as
-`APPLIED` on the strength of the *earlier* write, and the holder was told it had
-a TTL the store had never been given. Fixed by testing the version first, which
-property 1 makes decisive: every write advances the version, so a key still
-standing at the expected one has not been written by anybody, and no token can
-argue otherwise.
+**`resolve` decided by token before version, which is wrong for a lease
+renewing itself.** The renewing holder's token was already in the store from
+the grant before, so a renewal whose reply was lost came back `APPLIED`, and
+the holder was told it had a TTL the store had never been given. It was fixed
+by testing the version first; the argument for that order, and why property 1
+makes it decisive, is `resolve`'s docstring in `src/ration/contract.py`.
 
 - **The suite as it then stood could not have caught it.** `test_ambiguity.py`
   created and never rewrote, and the token stops identifying a *write* only
@@ -705,9 +573,10 @@ assertion rather than an xfail, because there the subject is the harness.
 
 ### A refusal that arrives late
 
-`PostgresStore` reuses a thread's connection while `conn.closed` is false, and a
-connection the server killed still reads `closed == False` until the client next
-talks to it. A store restart therefore cost each idle reader one refusal
+`PostgresStore` reuses a thread's connection while `conn.closed` is false, and
+`conn.closed` stays false on a connection the server has killed (the store's
+`_connect` docstring says when it changes). A store restart therefore cost
+each idle reader one refusal
 **whenever it next called**, which can be hours later, reported as a store
 failure about a store that had been back the whole time.
 

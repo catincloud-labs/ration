@@ -1,8 +1,8 @@
 """A candidate backend. Whether it qualifies is a conformance result, not a claim here.
 
 The contract names no store and leaves the choice downstream of the suite, so
-this module is written to be *judged* rather than to be adopted. It is imported
-only by the suite; nothing in `ration` depends on it, and `pyproject.toml`
+this module is written to be *judged* rather than to be adopted. Only the
+suite imports it; nothing in `ration` depends on it, and `pyproject.toml`
 carries no runtime dependency, because a driver in the dependency list decides
 by import what only a conformance run should decide.
 
@@ -140,8 +140,8 @@ class _LostOnReuse(Unreachable):
 
     Still a refusal, and everything outside this module sees it as one. It is a
     type of its own because it is the one failure that may be old news: a
-    connection the server terminated reads `closed == False` until the client
-    next talks to it, so *lost just now* and *lost hours ago* arrive as the
+    connection the server terminated still reports `closed == False` until the
+    client next sends on it, so *lost just now* and *lost hours ago* arrive as the
     same error on the same line. Only `read()` acts on the difference.
     """
 
@@ -150,19 +150,15 @@ class PostgresStore:
     """The contract over one table, with one connection per calling thread.
 
     The connection reuse is a **conformance requirement, not an
-    optimisation.** A connection per operation is the obvious shape and reads
-    as the careful one -- no pool to get wrong, no state to invalidate -- but
+    optimisation.** Opening a fresh connection for every operation looks like
+    the safe choice -- no pool to get wrong, no state to invalidate -- but
     under the suite's threaded probe it can run the machine out of ephemeral
     ports: every closed connection sits in `TIME_WAIT` for minutes afterwards,
     holding one, and once the range is spent a connect fails on `Address
     already in use`.
 
-    That is worth stating plainly because of what it says about the *suite*
-    rather than about Postgres. A store can pass every property and still not
-    survive being asked, and nothing in the contract catches this -- there is
-    no property about exhausting the machine. Only running the real thing under
-    real load finds it, which is the argument for deciding a backend by
-    conformance result rather than by comparison.
+    How it was found, and what that teaches about the suite, is the README's
+    section on what the real backend cost.
     """
 
     def __init__(self, dsn: str | Callable[[], str]) -> None:
@@ -242,8 +238,8 @@ class PostgresStore:
 
         The flag is whether the connection was **reused** rather than opened by
         this call. `conn.closed` cannot stand in for it: a connection the
-        server terminated reads `closed == False` until the client next talks
-        to it, so a reused connection is one whose health is simply not known.
+        server terminated still reports `closed == False` until the client next
+        sends on it, so a reused connection is one whose health is simply not known.
         """
         dsn = self._dsn()
         conn: psycopg.Connection[Any] | None = getattr(self._local, "conn", None)
