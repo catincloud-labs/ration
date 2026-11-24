@@ -3,9 +3,10 @@
 The sibling of `backends.py`, and the same argument applies: the suite's job
 is to **discriminate between readers**, so this registry is its subject -- one
 codec expected to pass every property, and a set that each drop exactly one
-check. The frame suite asks for a known-negative that fails without the check
-beside a known-positive that passes with it; the known-negative is a row here, and strict xfail is what makes its failure a requirement rather than
-an observation.
+check. The frame suite wants, for each check, a reader lacking it that must
+fail and the reference that must pass; the reader lacking it is a row here,
+and strict xfail is what makes its failure a requirement rather than an
+observation.
 
 What a case hands a test is a codec plus the means to build frames wrong on
 purpose *from that codec's own healthy frames*. That last part matters for the
@@ -107,6 +108,7 @@ class CodecUnderTest:
         that fails everything proves nothing about
         which check caught it, so each property is decided with the others
         held still, and the one that is about the ledger names its sender.
+        The README's frame section tells how the suite's first run found it.
         """
         ledger = SequenceLedger() if sender is None else self.ledger(sender)
         return self.codec.decode(data, ledger)
@@ -157,7 +159,7 @@ class CodecUnderTest:
 
 @dataclass(frozen=True)
 class CodecCase:
-    """One codec, and the properties it is expected to fail."""
+    """One codec, and which properties it must fail."""
 
     name: str
     violates: frozenset[str]

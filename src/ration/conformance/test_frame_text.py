@@ -28,8 +28,8 @@ normalising a header is not a shortcut anyone takes by accident.
 
 The frame here is a `role-claim` frame around a claim-only body, which is the
 use the form exists for. Every text is decoded against a ledger that has seen
-nothing, for the reason `src/ration/conformance/support/codecs.py` gives: the property is
-decided with the sequence held still.
+nothing, for the reason `ration.conformance.support.codecs` gives: the
+property is decided with the sequence held still.
 
 Measures: README.md, Frame property 6
 Measures: scripts/check_power_of_ten.py, rule 3

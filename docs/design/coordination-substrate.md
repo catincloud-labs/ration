@@ -250,19 +250,19 @@ purpose under the same strict xfail:
 
 | Guarantee | Shown by | Violators it rejects |
 | --- | --- | --- |
-| The bytes present honour the declared length, exactly: a short header, a short body and trailing bytes are each refused; and neither passes the maximum, 1 MiB of body, refused as `oversized` from a header alone or from the input's length | `src/ration/conformance/test_frame_length.py::test_the_bytes_present_must_honour_the_declared_length` | `unchecked-length`, `ignores-trailing`, `no-ceiling` |
-| A flipped bit anywhere, header or body, is refused as corruption: the CRC-32 covers the header as well as the body | `src/ration/conformance/test_frame_integrity.py::test_a_flipped_bit_anywhere_is_refused_as_corruption` | `unchecked-crc`, `body-only-crc` |
+| The length the header declares matches the bytes that arrived, no more and no fewer: a short header, a short body and trailing bytes are each refused; and nothing past the maximum, 1 MiB of body, is accepted, refused as `oversized` from a header alone or from the input's length | `src/ration/conformance/test_frame_length.py::test_the_bytes_present_must_honour_the_declared_length` | `unchecked-length`, `ignores-trailing`, `no-ceiling` |
+| A flipped bit anywhere, header or body, is refused as corruption: the CRC-32 is computed over header and body alike | `src/ration/conformance/test_frame_integrity.py::test_a_flipped_bit_anywhere_is_refused_as_corruption` | `unchecked-crc`, `body-only-crc` |
 | An unknown frame version is refused as that, before its layout is assumed | `src/ration/conformance/test_frame_version.py::test_an_unknown_version_is_refused_before_its_layout_is_assumed` | `unchecked-version`, `crc-before-version` |
-| A kind the registry does not name is refused | `src/ration/conformance/test_frame_kind.py::test_an_unregistered_kind_is_refused` | `unchecked-kind` |
+| A payload kind missing from `KINDS` is refused | `src/ration/conformance/test_frame_kind.py::test_an_unregistered_kind_is_refused` | `unchecked-kind` |
 | A receiver accepts exactly the next sequence, or a higher epoch at count zero; a duplicate, a gap, a replay and an older epoch are refused, and the ledger moves on acceptance only | `src/ration/conformance/test_frame_sequence.py::test_exactly_the_next_sequence_or_a_fresh_epoch_at_zero` | `unchecked-sequence`, `counter-only`, `sequences-before-checking` |
-| Only a frame's one canonical text is read; a string longer than the largest frame's text is refused as `oversized` on its length, any other as `malformed-text`, both before a frame check runs, and a fault in the bytes under a well-formed text is refused by the frame | `src/ration/conformance/test_frame_text.py::test_only_the_canonical_text_is_read_as_a_frame` | `lenient-text`, `library-strict`, `skips-text-decode`, `accepts-non-canonical`, `drops-dangling-character`, `collapses-layers`, `walks-before-bounding` |
+| Only a frame's one canonical text is read; a text past the length of the largest frame's is refused as `oversized` before its characters are read, any other non-canonical string as `malformed-text`, both before a frame check runs, and damaged bytes inside a well-formed text are refused by the frame's own checks | `src/ration/conformance/test_frame_text.py::test_only_the_canonical_text_is_read_as_a_frame` | `lenient-text`, `library-strict`, `skips-text-decode`, `accepts-non-canonical`, `drops-dangling-character`, `collapses-layers`, `walks-before-bounding` |
 
 And against the reference codec alone:
 
 | Guarantee | Shown by |
 | --- | --- |
 | The header is the layout the module states | `tests/test_frame.py::test_the_header_is_eighteen_bytes_in_the_stated_layout` |
-| Decoding bytes or text never raises: every fault is a `FrameRefusal` with a control from the closed set `CONTROLS` | `tests/test_frame.py::test_decode_returns_on_anything_and_never_raises`, `tests/test_frame.py::test_decode_text_returns_on_anything_and_never_raises` |
+| Decoding bytes or text never raises: every fault comes back as a `FrameRefusal` whose control is one of `CONTROLS` | `tests/test_frame.py::test_decode_returns_on_anything_and_never_raises`, `tests/test_frame.py::test_decode_text_returns_on_anything_and_never_raises` |
 | Encoding raises on a sender's own mistake | `tests/test_frame.py::test_encode_raises_on_a_senders_own_mistake` |
 | The frame's refusals cannot be mistaken for a consumer envelope's | `tests/test_frame.py::test_the_frames_refusals_cannot_be_mistaken_for_the_envelopes` |
 | An epoch whose count is exhausted refuses to wrap | `tests/test_frame.py::test_an_exhausted_epoch_refuses_to_wrap` |
@@ -271,14 +271,11 @@ And against the reference codec alone:
 | Decoding reads any contiguous buffer as its bytes, and raises only on something that is not one | `tests/test_frame.py::test_decode_reads_any_contiguous_buffer_as_its_bytes`, `tests/test_frame.py::test_decode_raises_only_on_a_callers_wrong_type` |
 | A maximum that does not fit the four-byte length field is refused at import | `tests/test_load_time_checks.py::test_a_planted_wrong_fact_raises_at_import[frame-maximum-past-the-length-field]` |
 
-**What it refuses, and what that costs.** A sender identity in the header: which
-sender a frame belongs to is the receiver's knowledge, and a field the frame
-cannot verify is not carried. Any opinion about the body. A kind outside
-`KINDS`, a closed registry. Authentication: the frame carries a CRC, not a
-MAC. The CRC and the sequence say a frame arrived as sent, once; neither says
-who may send it. The stated cost:
-a receiver whose ledger has seen nothing takes the first frame as its baseline,
-so a replay against a fresh ledger is not caught
+**What it refuses.** A sender identity in the header. Any opinion about the
+body. A kind outside `KINDS`, a closed registry. Authentication: the frame
+carries a CRC, not a MAC. The CRC and the sequence say a frame arrived as sent,
+once; neither says who may send it. A receiver whose ledger has seen nothing
+takes the first frame as its baseline
 (`tests/test_frame.py::test_a_fresh_ledger_takes_the_first_frame_as_its_baseline`
 pins that behaviour).
 

@@ -1,9 +1,10 @@
 """Frame property 2: a bit flipped anywhere in the frame is refused as corruption.
 
 Two of the frame's hostile cases -- a bit flipped in the body, a bit flipped in
-the header -- and the failure the check exists to prevent: a corrupted frame
-reaching a payload decoder. The header half is what a payload-level check
-reused as the frame's would have left bare (`body-only-crc`). Every frame here is decoded against a ledger that has
+the header -- and the failure the check exists to prevent: damaged bytes
+handed on to whatever decodes the payload. The header half is what a
+payload-level check reused as the frame's would have left bare
+(`body-only-crc`). Every frame here is decoded against a ledger that has
 seen nothing, so the sequence check cannot catch what the CRC missed: a
 flipped sequence bit either refuses as corruption or reaches the decoder, and
 there is no third outcome to hide behind. Violated by `unchecked-crc` and by

@@ -1,9 +1,9 @@
-"""Frame property 5: per sender, exactly the next sequence, or a fresh epoch at zero.
+"""Frame property 5: one past a sender's last count, or a new epoch from zero.
 
 The frame's duplicated-sequence and skipped-sequence cases, plus the rule for
-what a receiver does with a sender that restarts. Under HTTP a retried `POST`
-is a duplicate the transport delivers happily, and that retry is the first
-thing below. The last thing
+what a receiver does with a sender that restarts. A client that sends a
+`POST` again hands the receiver a duplicate HTTP does nothing to stop, and
+that resend is the first thing below. The last thing
 below is its mirror: a retry of a frame that was *refused* has not been seen,
 and must be accepted. The two retries are byte-identical to HTTP; the ledger
 is what tells them apart. This is the one property decided against a ledger
