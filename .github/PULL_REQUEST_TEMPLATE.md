@@ -59,7 +59,7 @@ one. Break the adjacency instead.
 When you DO mean to close something, list the exact set in `Autoclose:` so the
 effect is stated rather than inferred.
 
-The title is scanned too. It becomes the merge commit's message and holds no
+The title is scanned too. It becomes the squash commit's subject and holds no
 trailer, so a closing verb before a number there is refused even when you mean
 it: the close goes in this body instead.
 -->

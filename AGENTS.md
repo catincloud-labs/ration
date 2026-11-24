@@ -74,8 +74,8 @@ moves stand behind that rule, each paid for in this organisation:
   body explaining why.
 - **A title is a git artifact. PR and issue titles take the commit form:**
   `type(scope): summary` - lowercase after the colon, one clause, at most 100
-  characters, no trailing period. A PR title becomes the merge commit history
-  cites as `#N`; the full sentence belongs in the body. Issues take the type
+  characters, no trailing period. A PR title becomes the squash
+  commit's subject, which history cites as `#N`; the full sentence belongs in the body. Issues take the type
   their fix would take; an issue arguing a fork rather than naming work is
   `argument:`. Probe PRs say `probe:` - a type, not an exemption.
   - Checked for PRs by the `pr title` job (`scripts/check_pr_title.py`, its
@@ -127,7 +127,7 @@ moves stand behind that rule, each paid for in this organisation:
   `Autoclose: #N` trailer enumerating exactly what closes.
   - Guarded, not merely written down: the `closing keywords` job runs the
     guard over the PR body, the PR title, every commit message and GitHub's
-    own `closingIssuesReferences`. A title becomes the merge commit's message
+    own `closingIssuesReferences`. A title becomes the squash commit's subject
     and holds no trailer, so a closing verb before `#N` there is refused even
     when you mean it: a close you mean goes in the body, with its trailer.
     Enable the hook per clone - it does not install itself - unless the
