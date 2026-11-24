@@ -73,8 +73,8 @@ jobs:
           gh pr view "$PR" --json body -q .body > "$RUNNER_TEMP/pr-body.md"
           python scripts/check_closing_keywords.py "$RUNNER_TEMP/pr-body.md"
 
-      # A pull request here merges with a merge commit whose message carries
-      # the title, and a title holds no `Autoclose:` trailer, so a closing verb
+      # A pull request here merges as a squash whose subject is the title,
+      # and a title holds no `Autoclose:` trailer, so a closing verb
       # before `#N` in a title is refused outright. The body's trailer does not
       # answer it: the reconcile below reads the body alone. The title is read
       # the way the body is, with `gh pr view`, so the two cannot disagree.
