@@ -21,16 +21,11 @@ here needs a change to two keys at once, the refusal most likely to be the
 wrong one. Here it is not.
 
 **A renewing lease is its own predecessor, and the remedy has to allow for
-that.** Its token already sits in the store from its previous grant, so a
-`resolve` that checked the caller's token ahead of the key's version would
-credit a renew with a lost answer to the *earlier* write, and tell the holder
-it had time it did not have. The token identifies a writer, not a write.
-`resolve` in `contract.py` checks the version first, and property 1 is what
-makes that decisive; the conformance suite's ambiguity test and
-`tests/test_lease.py` both pin the case, and the README's first-consumer
-section tells how building this lease found it. The contract needs
-nothing more for it: the information is in the store, and only the order of
-reading it matters.
+that.** It is why `resolve` checks the version before the token, and
+`resolve`'s docstring in `contract.py` gives the argument.
+`ration.conformance.test_ambiguity` and `tests/test_lease.py` both pin the
+case, and the README's first-consumer section tells how building this lease
+found it. The contract needs nothing more for it.
 
 **`resolve` answers the question the contract asks, not the one a lease
 asks.** It returns a verdict and discards the version it read, and the version

@@ -29,8 +29,9 @@ Two kinds of existing payload are outside that rule on purpose:
 
 ## What a frame is
 
-A binary header of fixed size, laid out the way a space packet's primary
-header is, around a body this module never looks inside:
+A binary header of fixed size, in the general shape of a space packet's
+(version, identifier, sequence, length), around a body this module never
+looks inside:
 
 | offset | size | field | check |
 | --- | --- | --- | --- |
@@ -176,9 +177,9 @@ text's.
 
 ## The sequence, and the rule for a sender that restarts
 
-Of the frame's checks, this is the one plain HTTP use sets off: a client
-that sends a `POST` again produces a duplicate, and nothing in the transport
-stops it. The rule:
+Of the frame's checks, this is the one with a failure mode that ordinary HTTP
+use reaches: a client that sends a `POST` again produces a duplicate, and
+nothing in the transport stops it. The rule:
 
 - The sequence is one 64-bit integer whose **high word is the sender's epoch**
   and whose low word counts frames within it. Ordering is plain integer

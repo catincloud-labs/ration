@@ -335,18 +335,15 @@ gets `EvalPlanQual`.
 `src/ration/conformance/test_compare_and_set.py` decides both, accepting any version
 the key has held, and `echoes-expected` is the store it rejects for reporting
 one the key never held. **The acceptance has a store of its own.**
-`previous-version` (`src/ration/conformance/permitted.py`) is registered with no violations and,
-once a key has been written, answers every refusal with the version the key
-held before its current one. Every other correct store answers a refusal that
-races nothing with the current version. So a test tightened back to the
-current version fails `previous-version` and no other registered store, and
-loosening the assertion is a change the suite can see being undone. To watch
+`previous-version` (`src/ration/conformance/permitted.py`) is registered with
+no violations; its docstring says what it answers and why a store like it
+exists. To watch
 it, replace the assertion after the stale-expectation refusal with
 `assert refused == Conflict(created.version)` and run
 `pytest -rA src/ration/conformance/test_compare_and_set.py`. An exact version
-would mean **writing in order to read**, which is precisely what
-`conflict-writes` exists to fail; `Conflict`'s docstring prices it. So the
-claims were corrected and the
+would take either another round trip or an upsert that **writes in order to read**,
+which is precisely what `conflict-writes` exists to fail; `Conflict`'s
+docstring prices both. So the claims were corrected and the
 behaviour pinned by `tests/test_postgres_conflict_version.py`,
 deterministically, with a held row lock rather than a race. A caller needing
 the current version must read.
@@ -406,13 +403,9 @@ finding about the backend or the contract, not a fixture to be written.
   contract's first real consumer is missing is the test of the contract, and
   here it was missing **nothing**: the refusals held, and the only price was a
   second read when an answer is lost.
-- **The pool** (`ration.pool`), the thing the name promises. The store decides
-  expiry, and decides it per key, so N grants written into one key would have
-  their deadlines judged by the reader, the `client-expiry` violator the suite
-  already rejects. **A pool of N is therefore N separate leases**, and its
-  capacity is how many keys it has, with no number stored anywhere. `pool.py`
-  defines no `renew` and no `release`: the lease's own functions serve its
-  grants as they are. Its module docstring gives the full argument.
+- **The pool** (`ration.pool`), the thing the name promises: **N separate
+  leases**, one key each, with no `renew` or `release` of its own. Why the
+  contract forces that shape is `pool.py`'s module docstring.
 - **The generation pointer** (`ration.publish`): published state with a
   version, kept on one key by the same compare-and-set a lease uses.
 - **The frame** adds no key and no operation, and leans on the contract exactly
@@ -430,11 +423,10 @@ and both were about the *suite* rather than about Postgres:
   statement. That skip removes an instrument, never a verdict: `postgres-naive`
   has no seam either and is still expected to fail, on the threaded probe.
 - **A store that passed every property still could not survive being asked.**
-  The first backend opened a connection per operation, which is the obvious
-  shape and reads as the careful one. The threaded probe put about 1,600
-  connections through it, and the *next* run failed on
-  `Address already in use`: every one of them held an ephemeral port in
-  `TIME_WAIT`. Nothing in the contract catches that; there is no property about
+  The first backend opened a connection per operation. The threaded probe put
+  about 1,600 connections through it, and the *next* run failed on
+  `Address already in use`; `PostgresStore`'s docstring gives the mechanism
+  and why reuse is now required. Nothing in the contract catches that; there is no property about
   exhausting the machine. It was found by running the real thing under real
   load, which is the whole argument for deciding a backend by conformance
   result rather than by comparison. `PostgresStore` reuses one connection per

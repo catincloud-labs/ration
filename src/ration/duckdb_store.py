@@ -10,13 +10,11 @@ A store qualifies by a conformance result, obtained by running the suite rather
 than by arguing from the store's documentation, and this module is what lets the
 suite run against DuckDB.
 
-**It is also the best available test of the suite itself.** The violators in
-`ration.conformance.violators` each compute an answer the contract forbids,
-inside a single process, in plain view of the suite. DuckDB is different in
-kind: it is capable of being **correct in one process and structurally
-unusable in two**, the very caveat the repository's cross-process Postgres
-test was built to remove. A backend that passes the in-process suite and cannot be
-deployed is the sharpest thing this repository can point at its own instruments.
+**It is also the best available test of the suite itself**: it can be
+**correct in one process and structurally unusable in two**, the caveat
+`tests/test_postgres_cross_process.py` was built to remove. Why that makes it
+a finding about the suite, and not a property the contract should grow, is the
+README's section on DuckDB as a second real backend.
 
 ## The module is not called `duckdb.py`
 
@@ -133,8 +131,8 @@ class DuckDBStore:
 
     **The store is a FILE, owned by a single process.** That one fact is all
     this backend is and all that disqualifies it; see
-    the repository's single-process DuckDB test, which asserts the refusal
-    rather than describing it.
+    `tests/test_duckdb_single_process.py`, which asserts the refusal rather
+    than describing it.
 
     The cursor-per-thread is DuckDB's own documented pattern -- one connection,
     `connection.cursor()` per thread -- and is not the connection pooling

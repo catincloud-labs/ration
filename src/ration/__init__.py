@@ -1,4 +1,4 @@
-"""ration -- leases, pools and pointers over one compare-and-set primitive.
+"""ration -- a coordination substrate, the services on it, and a frame.
 
 Deliberately empty: each module is imported by its own path. The layout follows
 from the shape of the conformance suite, and a directory tree invented in

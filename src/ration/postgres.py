@@ -157,9 +157,8 @@ class PostgresStore:
     holding one, and once the range is spent a connect fails on `Address
     already in use`.
 
-    No property of the contract would have noticed; the threaded probe did,
-    by putting real load through a real server. What that teaches about the
-    suite is told in the README's section on what the real backend cost.
+    How it was found, and what that teaches about the suite, is the README's
+    section on what the real backend cost.
     """
 
     def __init__(self, dsn: str | Callable[[], str]) -> None:
