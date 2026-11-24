@@ -1,12 +1,12 @@
-"""The frame: a checked carrier beneath claims of authority and new payloads between nodes.
+"""The frame: a checked envelope for claims and new payloads between nodes.
 
-The rule the frame serves: a payload that carries a claim of authority from
-one node to another -- a fencing claim, a vote, a command one node sends
-another -- rides inside a frame, and so does every new payload between nodes;
-a payload already framed stays framed. The rule says where a payload belongs.
-A consumer moves a route onto the frame in its own change, so a claim can
-still cross outside a frame while that move is under way. The frame is
-checked before any payload is decoded, and this repository owns the frame.
+What belongs in a frame: any payload by which one node asserts authority to
+another -- a vote, a fencing claim, an instruction for the other node to act
+-- and any payload between nodes that is new. Once framed, a payload is never
+unframed. That says where payloads belong, not where each one is now: a
+consumer brings a route onto the frame in a separate change, so until that
+change lands a claim may still travel unframed. No payload is decoded until
+its frame has passed its checks, and the frame is defined in this package.
 This module is that frame, and nothing else -- no consumer, no route, no
 transport.
 
@@ -17,20 +17,20 @@ Two kinds of existing payload are outside that rule on purpose:
   claim, since its version is a fencing token -- an address's ``version``, a
   lease's, a publication's generation -- but it crosses between nodes through
   the store rather than as a message. Property 1 of the contract makes that
-  version rise per key and never be reused
-  (`src/ration/conformance/test_version.py`), so it already orders the record, and
-  a frame's sequence beside it would be a second ordering of one record.
+  version rise per key and never be reused (`ration.conformance.test_version`),
+  so it already orders the record, and a frame's sequence beside it would be
+  a second ordering of one record.
 - **The telemetry an existing shipper sends between nodes**, which carries no
   claim, so the rule does not bring it in. Framing it anyway would need a
   sequence rule this module does not have: a receiver here accepts exactly the
-  next count (`src/ration/conformance/test_frame_sequence.py`), so one lost batch
+  next count (`ration.conformance.test_frame_sequence`), so one lost batch
   would leave every later batch refused as a gap until the sender started a
   new epoch or the receiver a fresh ledger.
 
 ## What a frame is
 
-A fixed binary header in the space-packet shape, around a body this module
-never looks inside:
+A binary header of fixed size, laid out the way a space packet's primary
+header is, around a body this module never looks inside:
 
 | offset | size | field | check |
 | --- | --- | --- | --- |
@@ -46,31 +46,32 @@ inside it.
 
 ## The maximum, and why one number for every kind
 
-The length field is four bytes, so a header can declare up to 4 GiB of body,
-and a reader that took the field at its word would buffer whatever it was
-told. :data:`MAX_BODY_LENGTH` is the most body any receiver must accept: 1 MiB
-(1,048,576 bytes), for every kind.
+A length field of four bytes could announce a body of nearly 4 GiB, and a
+reader that believed the field would buffer all of it.
+:data:`MAX_BODY_LENGTH` is the most body any receiver must accept: 1 MiB,
+which is 1,048,576 bytes, and the same number whatever the kind.
 
-- **It starts generous**, because a frame carries a request or a fingerprint,
-  never data. Lowering it later breaks senders, and raising it needs every
-  receiver moved first.
-- **A receiver may still cap a kind tighter**, on its own side, once the frame
-  is handed back. The number here is the most any receiver must accept, not
-  the least it may.
+- **It is set high from the start**, since what a frame carries is a request
+  or a fingerprint, not bulk data, and the two directions of change are not
+  alike: a lower number later would refuse frames that senders already
+  build, while a higher one would have to wait until every receiver had been
+  upgraded.
+- **A tighter limit for one kind is still open to a receiver**, applied on
+  its side after the frame is handed back. The number here bounds what a
+  receiver is obliged to take, not what it may refuse.
 - **A sender is held to the same number.** :meth:`FrameCodec.encode` raises on
   a longer body, so no sender builds a frame a receiver may refuse for its
   size.
 
-## The integrity check is the frame's, not the payload's
+## Why the CRC covers the header as well as the body
 
-This is the reason the CRC covers the **header**. A digest a consumer's
-envelope carries is computed over its payload alone, so reusing it would leave
-the frame's own fields unprotected -- and the field that says which decoder to
-use would be the one field nothing checked. The two checks answer different
-questions: the CRC asks whether the frame was corrupted in transit, a digest
-asks whether the payload matches what its producer hashed. Their refusals
-carry different controls so a log record can tell them apart, and
-`tests/test_frame.py` pins that distinction.
+A consumer's envelope may carry a digest, but that digest is taken over the
+payload only. Borrowed as the frame's check, it would leave every **header**
+field uncovered, the kind byte that picks the decoder among them. The two
+checks answer different questions: the CRC asks whether the frame was
+corrupted in transit, a digest asks whether the payload matches what its
+producer hashed. Their refusals carry different controls so a log record can
+tell them apart, and `tests/test_frame.py` pins that distinction.
 
 ## The checks run in a stated order, and the order is the contract
 
@@ -91,7 +92,7 @@ A later frame version leans on it:
    - **Both readings are one observation**, more than any receiver must
      accept, so they carry one control, with the reason saying which was
      seen, as `truncated` does below.
-   - **An input past the maximum is refused here, not as `trailing-bytes`
+   - **Too many bytes in all is refused here, not as `trailing-bytes`
      below.** That later refusal reads a whole frame with garbage after it,
      which needs the CRC to have passed first, and no CRC is computed over
      an input the reader has refused to read.
@@ -167,7 +168,7 @@ character outside its alphabet silently and returns the bytes the text held
 before the character was added, so a reader built on it accepts a text no
 sender wrote. Its strict base64url setting, `validate=True` with base64url's
 `altchars`, still takes padding, the standard alphabet beside base64url's own,
-and set unused bits. `src/ration/conformance/test_frame_text.py` holds readers of
+and set unused bits. `ration.conformance.test_frame_text` holds readers of
 both shapes against the suite, beside one that skips the decode, one that
 checks every character and skips the round trip, one that reads a dangling
 character as nothing, and one that answers the frame's refusals as the
@@ -175,8 +176,9 @@ text's.
 
 ## The sequence, and the rule for a sender that restarts
 
-This is the one frame check with a live failure mode under HTTP -- a retried
-`POST` is a duplicate the transport delivers happily. The rule:
+Of the frame's checks, this is the one plain HTTP use sets off: a client
+that sends a `POST` again produces a duplicate, and nothing in the transport
+stops it. The rule:
 
 - The sequence is one 64-bit integer whose **high word is the sender's epoch**
   and whose low word counts frames within it. Ordering is plain integer
@@ -187,12 +189,12 @@ This is the one frame check with a live failure mode under HTTP -- a retried
 - **A sender that restarts starts a new epoch at count zero**, and the
   receiver accepts any epoch above the last one it saw, at count zero only.
   An epoch at or below the last one is `sequence-replayed`: that is a
-  restarted sender reusing a counter the receiver has seen, or an older
+  restarted sender whose numbers the receiver has already passed, or an older
   instance of the sender still talking -- the stalled holder the contract's
   fencing token exists to refuse, arriving on the wire.
 - **Where the epoch comes from** is the sender's, and this package already has
-  the right source: a lease version. Property 1 of the contract makes it
-  monotonic per key and never reused, not even after deletion, so a sender
+  the right source: a lease version. Property 1 of the contract has it only
+  rise, per key, and never repeat, deletion included, so a sender
   that re-announces its role after a restart holds an epoch strictly above
   any it held before, without persisting anything. A sender with no lease
   needs its own never-reused source, and this module does not check where
@@ -558,9 +560,9 @@ class FrameCodec:
     A class rather than two functions so that the steps are visible as the
     order the module docstring states, and so that an implementation which
     skips one -- the shape every shortcut takes -- is a subclass overriding
-    one method, which is what `src/ration/conformance/frame_violators.py` holds against the
-    suite. Nothing here is a seam that exists only for a test: every method is
-    a check the reader performs.
+    one method, which is what `ration.conformance.frame_violators` holds
+    against the suite. Nothing here is a seam that exists only for a test:
+    every method is a check the reader performs.
     """
 
     def checksum(self, checked_header: bytes, body: bytes) -> int:
@@ -676,10 +678,11 @@ class FrameCodec:
         ``bytearray`` or a contiguous ``memoryview`` of any format. The header
         is read from the view and the input measured by the view's length in
         bytes, so ``data`` is copied only once the maximum has bounded it: an
-        input past the maximum is refused before a byte of its body is copied
-        or read. Anything that is not a contiguous buffer is the caller's own
-        mistake rather than bytes off a network, and raises ``TypeError``, as
-        :meth:`decode_text` does on a ``text`` that is not a ``str``.
+        input over the maximum is turned away before a byte of its body is
+        copied or read. Anything that is not a contiguous buffer is the
+        caller's own mistake rather than bytes off a network, and raises
+        ``TypeError``, as :meth:`decode_text` does on a ``text`` that is not a
+        ``str``.
         """
         view = memoryview(data).cast("B")
         refused = self.header_present(view)
