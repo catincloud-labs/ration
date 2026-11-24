@@ -400,8 +400,9 @@ description the README at this entry's commit would become.
 - **"It becomes the merge commit's message"** The opening of the second
   sentence of the comment's last paragraph, which begins "The title is
   scanned too", in this wording from `922eb96` (2026-11-14T02:37:30Z). Read
-  dead 2026-11-24 for the reason in the AGENTS.md entry *The pull request
-  title, in a squash*. The sentence now says the title becomes the squash
+  dead 2026-11-24 against `main` at `4e7b198` and this repository's merge
+  settings, for the reason in the AGENTS.md entry *The pull request title,
+  in a squash*. The sentence now says the title becomes the squash
   commit's subject; that it holds no trailer stands.
 
 ## docs/design/coordination-substrate.md
