@@ -408,10 +408,9 @@ runs its own self-test before it runs in CI: proof it can fire and proof it can
 go quiet.
 
 **Two of those rows are one implementation short of the ideal, and it is worth
-knowing which.** `conflict-writes` is declared against two properties rather
-than one, because a store that writes when it should not destroys the winner's
-value in any race it loses: there is no interleaving in which it is atomic. A
-violator that broke only the reply would be better and does not exist.
+knowing which.** `conflict-writes` breaks atomicity as well as the reply, and
+is registered for both; `ConflictWritesStore`'s docstring in
+`src/ration/conformance/violators.py` says why no narrower violator exists.
 
 **The version property is still short its most likely violator.** Restoring a
 store from a backup can replay or invalidate lease versions, so a restore is
@@ -424,17 +423,16 @@ Stated here so the gap is a known absence rather than a discovery made during
 a recovery.
 
 **A claim the suite did not cover was false for as long as nobody looked.**
-`Conflict` and the Postgres `compare_and_set` both stated that a conflict
-reports the version the key had moved to. It does not. Under concurrency
-`PostgresStore` reports the version the caller came **from**: two writers from
-version 1 leave the loser holding `Conflict(1)` while the key is at 2; two
-creators leave the loser holding `Conflict(0)` while the key is at 1. The
-statement that decides the outcome and the statement that reports the version
-share one snapshot, and only the `UPDATE` half gets `EvalPlanQual`.
+`Conflict` and the Postgres `compare_and_set` both once said that a conflict
+carries the version the key had moved to. Under concurrency it does not:
+`PostgresStore` hands back the version the losing caller started **from**,
+both for updaters and for creators racing from absence. `Conflict`'s docstring
+in `src/ration/contract.py` gives the two cases and why the server behaves so;
+here the part worth adding is that only the `UPDATE` half of the statement
+gets `EvalPlanQual`.
 
-**Not a contract defect.** The contract requires a conflict to be reported
-*without writing*, which holds, and asks of the version it carries only that
-the key has held it, which holds too.
+**Not a contract defect.** What the contract asks of a conflict is stated on
+`Conflict`, and both demands hold.
 `src/ration/conformance/test_compare_and_set.py` decides both, accepting any version
 the key has held, and `echoes-expected` is the store it rejects for reporting
 one the key never held. **The acceptance has a store of its own.**
@@ -446,10 +444,10 @@ current version fails `previous-version` and no other registered store, and
 loosening the assertion is a change the suite can see being undone. To watch
 it, replace the assertion after the stale-expectation refusal with
 `assert refused == Conflict(created.version)` and run
-`pytest -rA src/ration/conformance/test_compare_and_set.py`. Making a conflict's
-version exact costs either a second round trip or an
-`ON CONFLICT DO UPDATE` that **writes in order to read**, which is precisely
-what `conflict-writes` exists to fail. So the claims were corrected and the
+`pytest -rA src/ration/conformance/test_compare_and_set.py`. An exact version
+would mean **writing in order to read**, which is precisely what
+`conflict-writes` exists to fail; `Conflict`'s docstring prices it. So the
+claims were corrected and the
 behaviour pinned by `tests/test_postgres_conflict_version.py`,
 deterministically, with a held row lock rather than a race. A caller needing
 the current version must read.
@@ -470,31 +468,17 @@ against `naive`, the one implementation that must never pass, at the rate
 recorded under **The first calibration** below. A suite that had merely *run*
 it would have shipped that green as evidence.
 
-Threads or a deterministic interleaving? **Both, doing different jobs.** The
-interleaving is the gate: it parks one operation at the last moment before its
-atomic step, runs another **to completion**, and, the part that matters,
-asserts that the interleaving happened. It is needed by two properties rather
-than one, and the second is `stale-clock`: a store that reads its own clock and
-then evaluates expiry somewhere else defeats clock injection entirely, because
-the reading it used was never the caller's.
-
-The seam sits *outside* every lock, and that placement is the reason the stepper
-is deterministic rather than lucky. A parked operation holds nothing, so the
-second one cannot be blocked by it and is waited for rather than given a window
-and assumed. Giving it a fixed fraction of a second and carrying on either way
-would reintroduce the failure this section argues against: a run that missed
-its own interleaving, reporting green.
-
-**A hammer can tell that it raced, and not whether it raced inside the
-window.** A writer refused because another moved the version between its read
-and its write was refused by a genuine overlap, so the threaded test counts
-refusals and reports *"the probe never raced"* instead of a verdict when there
-were none. What it cannot do is land inside the read-to-write window on
-demand: a violating implementation that is never made to race inside it has
-not been shown to survive one. So threads are a **probe, not a gate**: they
-reach non-atomicity inside a real store that no client-side stepper can, and
-they carry a false-pass rate the suite states rather than implies. The order of
-the two checks is in `src/ration/conformance/test_atomicity.py`'s docstring.
+Threads or a deterministic interleaving? **Both, doing different jobs**, and
+the module docstring of `src/ration/conformance/test_atomicity.py` is where
+each job, and the order the two checks run in, is argued. In brief: the
+interleaving is the gate, deterministic because its seam holds no lock, and it
+proves the interleaving it arranged took place. Two properties need it, the
+second being `stale-clock`: a store that reads its own clock and then judges
+expiry somewhere else defeats clock injection entirely, because the reading it
+used was never the caller's. Threads are a **probe, not a gate**: they reach
+non-atomicity inside a real store that no client-side stepper can, they can
+show that a race happened but not that it landed where a violator is weak, and
+the false-pass rate they carry is stated by the suite, not implied.
 
 **The first calibration is the finding worth keeping.** On the interpreter's
 default switch interval, the hammer **never once** caught the naive backend: it
@@ -589,18 +573,16 @@ key constraint` under load, from `tests/test_lease.py`, after the conformance
 run had pronounced the same path correct. The cause was in the suite's own
 instruments: **every concurrent test seeded its key single-threaded and then
 raced from that version**, so the suite had only ever raced *updaters*. The
-`INSERT` branch had never been entered by two callers at once.
+`INSERT` branch had never been raced at all.
 `test_two_creators_racing_from_absence_do_not_both_apply` closes it, and the
 control is the usual one: with the defect reintroduced the new test goes red
 while the entire pre-existing suite passes green.
 
 **The second-order lesson is about probes, not about DuckDB.** The first draft
 of that test was threaded only. It caught `naive` every run in isolation and then
-let it through inside the full suite, because a creation can be raced only once
-per key and a loaded machine serialises the racers. A single shot per round is
-not something a strict xfail can stand on, so the test uses the deterministic
-stepper wherever a seam exists and the probe only where none does, the split
-the rest of the atomicity file already uses.
+let it through inside the full suite. So the test now gates through the
+deterministic stepper wherever a seam exists and probes with threads only where
+none does; its docstring says why a creation race forces that split.
 
 ## What the first consumer found
 
@@ -608,15 +590,12 @@ Both findings are the **same lesson as the `Conflict` correction above**,
 arriving from a new direction: a property nothing asserts on is a property the
 code is free to be wrong about, and the prose will agree with it the whole time.
 
-**`resolve` decided by token before version, and that is wrong for a caller
-that is its own predecessor.** Property 4's remedy recognises the caller's own
-write by finding its token in the store. A renewing lease already has its token
-there, from the grant before, so a renew whose answer was lost resolved as
-`APPLIED` on the strength of the *earlier* write, and the holder was told it had
-a TTL the store had never been given. Fixed by testing the version first, which
-property 1 makes decisive: every write advances the version, so a key still
-standing at the expected one has not been written by anybody, and no token can
-argue otherwise.
+**`resolve` decided by token before version, which is wrong for a lease
+renewing itself.** The renewing holder's token was already in the store from
+the grant before, so a renewal whose reply was lost came back `APPLIED`, and
+the holder was told it had a TTL the store had never been given. It was fixed
+by testing the version first; the argument for that order, and why property 1
+makes it decisive, is `resolve`'s docstring in `src/ration/contract.py`.
 
 - **The suite as it then stood could not have caught it.** `test_ambiguity.py`
   created and never rewrote, and the token stops identifying a *write* only
@@ -705,9 +684,10 @@ assertion rather than an xfail, because there the subject is the harness.
 
 ### A refusal that arrives late
 
-`PostgresStore` reuses a thread's connection while `conn.closed` is false, and a
-connection the server killed still reads `closed == False` until the client next
-talks to it. A store restart therefore cost each idle reader one refusal
+`PostgresStore` reuses a thread's connection while `conn.closed` is false, and
+`conn.closed` stays false on a connection the server has killed (the store's
+`_connect` docstring says when it changes). A store restart therefore cost
+each idle reader one refusal
 **whenever it next called**, which can be hours later, reported as a store
 failure about a store that had been back the whole time.
 

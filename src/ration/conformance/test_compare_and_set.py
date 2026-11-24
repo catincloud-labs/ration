@@ -1,12 +1,12 @@
-"""Property: the write lands if and only if the key is still where the caller left it.
+"""Property: the write lands only while the key is still where the caller left it.
 
 The contract states this as the operation rather than as one of its four
 numbered properties, which makes it the easiest thing in the contract to assume
 rather than check. Violated by `create-always`, which lets a write to an absent
 key land whatever version the caller expected; by `conflict-writes`, which
 reports a conflict and writes anyway; and by `echoes-expected`, which refuses
-correctly and hands back the caller's own expected version, one the key may
-never have held.
+correctly and hands back the caller's own expected version, one this key
+need not ever have had.
 
 It is one test rather than several on purpose. A store expected to fail this
 property is marked strict-xfail against every test carrying it, so splitting the

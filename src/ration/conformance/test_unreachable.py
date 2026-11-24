@@ -1,14 +1,13 @@
 """Property 3: unreachable means refuse.
 
-Where the store lives in one place, this is load-bearing rather than tidy. Two
-nodes cannot form a quorum, so a deployment that small keeps the store on one of
-them, and that placement is safe under partition only because a caller who
-cannot reach the store refuses. "Unreachable means refuse" is not a fallback
-there; it is the mechanism by which a store in one place cannot cause a lost
-update. Violated by `fail-open`.
+Where the store lives in one place, as it must for a deployment too small to
+form a quorum, this rule carries the weight. That placement is safe under
+partition only because a caller who cannot reach the store refuses. Refusing
+is not a fallback in that setting: it is how a store in one place is kept from
+causing a lost update. Violated by `fail-open`.
 
 Note where the violator sits: in a wrapper, not in a store. Failing open is
-written in the layer someone adds *in front of* a correct store, after a
+written in the layer someone puts *ahead of* a store that is correct, after a
 partition caused an outage and refusing looked like the bug.
 
 Measures: src/ration/contract.py, property 3

@@ -126,7 +126,7 @@ class MemoryStore:
         having a window, and the suite does not have to catch it in one.
 
         This is not a contract clause. Nothing requires a backend to have a seam
-        -- a real store's atomic step happens on the far side of a socket, where
-        no client-side stepper can reach it. That is what the suite's threaded
+        -- a real store's atomic step happens behind a socket, in another
+        process, where no client-side stepper can reach it. That is what the suite's threaded
         probe is for, and why the probe is not the only check.
         """

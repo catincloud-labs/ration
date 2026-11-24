@@ -1,29 +1,32 @@
 """The coordination contract, expressed as types.
 
-This module states the contract, and the conformance suite under
-`src/ration/conformance/` decides whether a backend implements it. The substrate is
-one key at a time under compare-and-set against a version, and nothing more.
+This module is where the contract is stated, and the conformance suite under
+`src/ration/conformance/` decides whether a backend implements it. The substrate
+is a single key at a time, written by a compare-and-set that names a version,
+and nothing more.
 
-The operation itself is stated first, and is not numbered: `compare_and_set`
-on a single key applies only at the expected version, the comparison and the
-write are one step, and a conflict is reported without writing. The suite
-decides it as two properties of its own, `compare-and-set` in
-`test_compare_and_set.py` and `atomicity` in `test_atomicity.py`.
+The operation comes first and carries no number. A `compare_and_set` writes
+one key, and only when that key still holds the version the caller names;
+checking the version and writing happen as one indivisible step; and a refused
+write leaves the key untouched and says so. The suite judges the operation
+under two property names, `compare-and-set` (in `test_compare_and_set.py`) and
+`atomicity` (in `test_atomicity.py`).
 
-Four properties hold of the substrate besides, numbered here because the rest
-of this package and the suite cite them by number:
+Beyond the operation, four numbered properties hold. They carry numbers
+because other modules here, and the suite, refer to them that way:
 
-1. The version rises per key and is never reused, not even after deletion.
-2. Expiry is evaluated by the store, against its own clock, when asked.
+1. Each key's version only goes up, and no value is ever handed out twice for
+   one key, deletion included.
+2. The store decides expiry, by its own clock, at the moment it is asked.
 3. A store that cannot be reached is a refusal, never a guess.
-4. A write whose outcome was lost is resolvable by reading.
+4. A write whose outcome was lost can be settled afterwards by a read.
 
-The module deliberately adds nothing to that: a capability the contract refuses
-is not quietly available here because it was convenient to expose.
+Nothing beyond that is exposed here. A capability the contract refuses does
+not turn up in this module merely because it would have been easy to add.
 
-Read this file as a specification with zero implementations. That is
-deliberate: an interface with one implementation is premature, and an
-interface with none is a specification.
+This file is a specification that no class in it implements, on purpose. An
+interface written around a single implementation tends to describe that
+implementation; one written around none describes only what is required.
 """
 
 from __future__ import annotations
@@ -101,21 +104,22 @@ class Conflict:
     and writes anyway has answered honestly and acted otherwise, which is worse
     than either alone.
 
-    **`version` is a version the key has held. It is not a promise about the
-    key's current version, and under concurrency it is often not the current
-    one.** `PostgresStore` reports the version the caller came *from* when it
-    loses a race, because the statement deciding the outcome and the statement
-    reporting the version share one snapshot. Two writers from version 1 leave
-    the loser holding ``Conflict(1)`` while the key is at 2, and two creators
-    leave the loser holding ``Conflict(0)`` while the key is at 1.
+    **`version` is some version this key has held at some point. It is not a
+    promise about the key's current version, and under concurrency it is often
+    not the current one.** `PostgresStore`, when it loses a race, hands back
+    the version the caller started *from*, because the statement that decides
+    the outcome and the statement that reports the version read one snapshot.
+    With two updaters starting at version 1, the one that loses gets
+    ``Conflict(1)`` and the key sits at 2; with two creators racing from
+    absence, the one that loses gets ``Conflict(0)`` and the key sits at 1.
 
-    That is permitted rather than merely tolerated. **The contract requires
-    that a conflict be reported without writing, and asks of the version it
-    carries only that the key has held it.** It does not ask for the current
-    version, because a guarantee specified before a consumer needs it is
-    specified from imagination. Making this field exact costs a second
-    round trip, or an ``ON CONFLICT DO UPDATE`` that writes in order to read --
-    which the paragraph above forbids outright.
+    That is permitted rather than merely tolerated. **The contract's demands
+    on a conflict are two: nothing is written, and the version it carries is
+    one the key really held.** The current version is not among them, since no
+    consumer has needed it, and a promise made before anyone needs it is a
+    guess about what they will need. Making the field exact would take a
+    second round trip, or an ``ON CONFLICT DO UPDATE`` -- a statement that
+    writes so that it can read, which the paragraph above forbids outright.
 
     So **a caller that needs the current version must read.** Treating this
     number as current is the mistake the field invites, which is why the
@@ -133,16 +137,16 @@ Outcome = Applied | Conflict
 class Unreachable(Exception):
     """The store could not be reached.
 
-    Property 3: a caller that cannot reach the store has acquired nothing and
-    must not proceed. This is raised rather than returned on purpose -- an
-    outcome can be ignored by a caller who only checks for the one it wanted,
-    and fail-closed that depends on the caller remembering to be careful is a
-    habit rather than a property of the substrate.
+    Property 3: silence from the store grants nothing, and the caller must
+    stop there. This is raised rather than returned on purpose -- an outcome
+    can be ignored by a caller who only checks for the one it wanted, and
+    refusing on failure only when each caller remembers to is a habit, not
+    something the substrate holds.
     """
 
 
 class Ambiguous(Exception):
-    """A write that may or may not have applied.
+    """A write whose outcome the caller never learned.
 
     Property 4: a `compare_and_set` that is lost after transmission has an
     outcome the caller has not seen, not an outcome that does not exist. The
@@ -154,8 +158,8 @@ class Store(Protocol):
     """The whole substrate. Two operations, and nothing else.
 
     The contract's refusals are load-bearing and are visible here as absences:
-    no second key, no ordering, no watches, no queue, no lock held across a
-    round trip. Adding a method to this Protocol is a change to the contract
+    no second key, no ordering, no watches, no queue, and no lock that
+    outlives one call. Adding a method to this Protocol is a change to the contract
     itself, not a convenience.
     """
 
@@ -174,9 +178,9 @@ class Store(Protocol):
         *,
         ttl: float | None = None,
     ) -> Outcome:
-        """Write `record` if and only if the key is still at `expected_version`.
+        """Write `record` only when the key still holds `expected_version`.
 
-        The comparison and the write are one step: no other write to the key
+        Checking and writing are indivisible: no other write to the key
         lands between checking the version and writing, so two callers from one
         version cannot both apply. A key not at `expected_version` returns a
         `Conflict`, and nothing is written.
@@ -221,21 +225,20 @@ def resolve(
     all. Neither answers alone.
 
     **The version is tested before the token, and that order is the whole
-    correctness of this function.** The other order is wrong for any caller
-    that is **its own predecessor** -- one writing a key it already holds. A
-    lease renewing itself is exactly that: its token is already in the store
-    from the previous grant, so with the token tested first, a renew whose
-    answer was lost would resolve as `APPLIED` on the strength of a record the
-    *earlier* write left behind, and the holder would be told it had time it
-    did not have.
+    correctness of this function.** Token first goes wrong whenever the caller
+    already holds the key it is writing. A lease renewing itself is exactly
+    that: the previous grant left its token in the store, so if the token were
+    checked first, a renewal whose reply went missing would come back
+    `APPLIED` because of what the *earlier* write left there, and the holder
+    would believe in time it was never given.
 
     **The token identifies a writer, not a write.** Those coincide only while a
     caller writes a key at most once, and a renewing lease or an advancing
     publisher writes it again and again; `test_ambiguity.py` reaches that case
     in `test_a_rewriters_lost_answer_is_resolved`. Property 1 is what closes
-    it: every write advances the version, deletion included, so a key still
-    standing at `expected_version` has not been written by anyone, and no token
-    can argue otherwise.
+    it: every write advances the version, deletion included, so a key whose
+    version has not moved off `expected_version` has had no write since,
+    whatever token is sitting there.
     """
     reading = store.read(key)
     if reading.version == expected_version:

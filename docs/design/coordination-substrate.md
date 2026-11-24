@@ -101,7 +101,7 @@ properties hold of the substrate besides:
 | A write applies only at the expected version. Absence is a version (`ABSENT`), so creation is a compare-and-set like any other | An upsert: creating a key that already exists. A write that reports a conflict and lands anyway. A conflict carrying a version the key never held | `src/ration/conformance/test_compare_and_set.py::test_the_write_lands_only_at_the_expected_version` | `create-always`, `conflict-writes`, `echoes-expected` |
 | The comparison and the write are one step: two writers racing from one version do not both apply, and neither do two creators racing from absence | Read-then-write | `src/ration/conformance/test_atomicity.py::test_two_writers_racing_from_one_version_do_not_both_apply` (a deterministic gate, where a store has an in-process seam), `src/ration/conformance/test_atomicity.py::test_concurrent_increments_lose_nothing` (a threaded probe, the only instrument where it has none), `src/ration/conformance/test_atomicity.py::test_two_creators_racing_from_absence_do_not_both_apply` | `naive`, `conflict-writes`, `postgres-naive` |
 | 1. The version rises per key and is never reused, not even after the key is deleted | A counter that restarts when the value goes; a counter shared across keys | `src/ration/conformance/test_version.py::test_versions_rise_per_key_and_are_never_reused` | `recycling`, `global-counter` |
-| 2. Expiry is evaluated by the store, against its own clock, at the moment it is asked. `ttl` is a duration; there is no parameter for a caller's deadline | The caller's clock; a store clock read early and acted on later | `src/ration/conformance/test_expiry.py::test_expiry_is_decided_by_the_store_when_it_is_asked` | `client-expiry`, `stale-clock` |
+| 2. Expiry is judged by the store, on the store's clock, when a read or write asks. `ttl` is a duration; there is no parameter for a caller's deadline | The caller's clock; a store clock read early and acted on later | `src/ration/conformance/test_expiry.py::test_expiry_is_decided_by_the_store_when_it_is_asked` | `client-expiry`, `stale-clock` |
 | 3. A caller that cannot reach the store has acquired nothing: `Unreachable` is raised, not returned | Treating silence as "nothing there" | `src/ration/conformance/test_unreachable.py::test_a_caller_that_cannot_reach_the_store_acquires_nothing` | `fail-open` |
 | 4. A write whose answer was lost is resolvable by reading, because the caller's token is in the store. `resolve` tests the version before the token, so a caller rewriting a key it already holds is not credited with its earlier write | Keeping the payload and losing the token; deciding by token alone | `src/ration/conformance/test_ambiguity.py::test_a_lost_answer_is_recovered_by_reading`, `src/ration/conformance/test_ambiguity.py::test_a_rewriters_lost_answer_is_resolved` | `token-dropping` |
 
@@ -112,8 +112,8 @@ them is a change to `src/ration/contract.py`, and so to the contract.
 
 **A conflict's version is not promised to be the key's current version.** `Conflict.version`
 is a version the key has held. Under concurrency `PostgresStore` reports the
-version the loser came *from*, and the contract permits it; a caller that needs
-the current version reads. The compare-and-set test accepts any version the key
+version the loser came *from*, and the contract permits it; a caller wanting
+the key's present version reads it. The compare-and-set test accepts any version the key
 has held, and `previous-version` (`src/ration/conformance/permitted.py`), registered with no
 violations, is the correct store that holds it to that: once a key has been
 written, it answers every refusal with the version the key held before its

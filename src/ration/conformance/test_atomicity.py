@@ -1,4 +1,4 @@
-"""Property: the comparison and the write are one step, not two.
+"""Property: checking the version and writing it are one step, not two.
 
 Violated by `naive` and by `conflict-writes`.
 
@@ -11,8 +11,8 @@ Two checks, doing different jobs:
   writer is *waited for* rather than given a window and assumed. It reaches
   only stores whose atomic step is in this process.
 - **The hammer is a probe.** Real threads against a real store, reaching
-  non-atomicity no client-side stepper can. It carries a false-pass rate, stated
-  below rather than implied, and it is not what the suite rests on.
+  non-atomicity no client-side stepper can. Its false-pass rate is stated
+  below rather than left implied, and it is not what the suite rests on.
 
   **A hammer can tell that it raced, and not whether it raced inside a
   violator's read-to-write window.** The race leaves a
@@ -35,7 +35,7 @@ Two checks, doing different jobs:
   that raced (refusals seen) without landing inside the read-to-write window
   loses nothing, the xfail passes, and CI is red on a commit that changed
   nothing it tests. A red that a re-run clears is a red people learn to
-  re-run. So where a store has a seam,
+  re-run. So on a store with a seam,
   `test_concurrent_increments_lose_nothing` decides the lost increment
   **through the seam first**: one incrementer parked between its read and its
   write, a second run to completion, the first released. A store whose

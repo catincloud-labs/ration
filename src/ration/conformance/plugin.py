@@ -1,14 +1,11 @@
 """The way a store of your own joins the suite: a pytest plugin, enabled by name.
 
-A project that judges a store enables this module in the `conftest.py` at the
-root of the directory it runs pytest from:
-
-    pytest_plugins = ["ration.conformance.plugin"]
-
-or with `-p ration.conformance.plugin` on the command line, and runs the suite
-the package ships with `pytest --pyargs ration.conformance`. There is no
-`pytest11` entry point, and that is the opt-in: a project that installs
-`ration` to hold a lease, not to judge a store, never has this join its runs.
+Enabling it, by `pytest_plugins` in a root `conftest.py` or by
+`-p ration.conformance.plugin`, and running the shipped suite are shown step by
+step in the README's section on running the suite against a store. The
+plugin registers no `pytest11` entry point, and that absence is the opt-in: a
+project that installs `ration` to hold a lease, not to judge a store, never
+has this join its runs.
 
 What the plugin does, and nothing else:
 
@@ -19,17 +16,17 @@ What the plugin does, and nothing else:
   and the suite's `conftest.py` reads them at collection.
 - **It always registers the package's own cases first**: every store in
   `MEMORY_CASES`, the correct ones and the violators, and every frame codec in
-  `CODECS`. The suite's `conftest.py` strict-xfails each violator against the
-  property it breaks, so a run that judges a stranger's store is red wherever
-  a violator passes in the stranger's environment.
-- **It refuses two cases with one name**, because a name is how the report and
-  the require switch tell cases apart. A case returned that is already
-  registered, one of the package's own included, is registered once.
+  `CODECS`. The suite's `conftest.py` strict-xfails each violator for its own
+  property, so a run judging a stranger's store goes red wherever a violator
+  passes in the stranger's environment.
+- **It refuses two cases with one name**, since names are what both the report
+  and the require switch use to tell cases apart. A case returned that is
+  already registered, one of the package's own included, is registered once.
 - **It refuses a required case that nothing judged.** `--ration-require NAME`,
-  repeatable, names a case of the caller's that the run must judge. When no
-  collected test runs a case of the caller's by that name, because none was
-  registered or because the suite was not collected or was deselected, the
-  run ends as a usage error before any test runs.
+  repeatable, names a case of the caller's that the run must judge. If, after
+  collection, no test is set to run the caller's case of that name -- it was
+  never registered, or the suite went uncollected or deselected -- pytest stops
+  with a usage error and runs no test at all.
 
 It hands both registries to the suite through `support/registry.py`'s
 `register`, so the suite's mechanism reads them where it did before there was a
@@ -68,7 +65,7 @@ class CaseSpec:
         leave out `config`. Every implementation is called once, at
         `pytest_configure`, and its cases are registered after the package's,
         in the order returned. The case contract is in the README, under
-        *Running the suite against your own store*.
+        *The case contract*.
         """
         raise NotImplementedError("a hook specification is never called")
 

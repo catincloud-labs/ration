@@ -1,13 +1,13 @@
-"""Stores that are wrong on purpose, one property at a time.
+"""Stores built wrong on purpose, each breaking a single property.
 
 These are the suite. A property whose violator is missing looks exactly like
 a property whose violator silently passes, and neither is being tested. The rule
-in `AGENTS.md` is that the violating implementation lands in the same change as
-the property, and `test_the_suite_discriminates.py` is what stops that rule from
-being a thing everyone remembers to follow.
+in `AGENTS.md` is that the violating implementation arrives with its property,
+in one change, and `test_the_suite_discriminates.py` turns that rule into a
+check rather than a thing everyone remembers to follow.
 
 Each class below is small deliberately. A store that is broken in several ways
-fails everything and therefore proves nothing about which check caught it; the
+fails everything, and so cannot show which check did the catching; the
 value of a violator is entirely in how *little* it does wrong. Where one
 unavoidably breaks a second property, it says so and says why, and it declares
 both in `backends.py` rather than being marked for one and quietly failing two.
@@ -79,10 +79,10 @@ class ConflictWritesStore(MemoryStore):
     damage is invisible from where it happens.
 
     It is declared against two properties rather than one, and that is not
-    slack in the rule -- it is forced. A store that writes when it should not
-    destroys the winner's value in any race it loses, so there is no interleaving
-    in which it satisfies atomicity. A violator that could break only the reply
-    would be preferable and does not exist.
+    slack in the rule -- it is forced. Whenever it loses a race it still writes,
+    and that write erases the value the winner just put there, so no ordering of
+    the two writers leaves atomicity intact. A violator that could break only
+    the reply would be preferable and does not exist.
     """
 
     def compare_and_set(
@@ -106,12 +106,12 @@ class EchoesExpectedStore(MemoryStore):
     """Violates: `compare-and-set`. A conflict carries the caller's own number back.
 
     The comparison, the refusal and the write are all correct; only the version
-    in the refusal is wrong. It reports the version the caller expected, which
-    reads plausibly -- "you asked about this one" -- and which the key may never
-    have held. `Conflict` promises a version the key has held and nothing about
-    which, so a version it never held is how the field is got wrong, and this is
-    the shape a backend reaches by echoing its parameter instead of reading its
-    row.
+    in the refusal is wrong. It hands back the caller's expected version, which
+    reads plausibly -- "you asked about this one" -- and which this key need not
+    ever have had. `Conflict` promises some version the key once held and says
+    nothing about which, so one it never held is how the field is got wrong,
+    and this is the shape a backend reaches by echoing its parameter instead of
+    reading its row.
     """
 
     def compare_and_set(
@@ -134,8 +134,8 @@ class NaiveStore(MemoryStore):
     """Violates: `atomicity`. Reads, then writes, with nothing joining them.
 
     This is the negative control the atomicity property exists to reject:
-    read-then-write is exactly what the operation must not be. If it ever
-    passes, the suite is measuring nothing.
+    read-then-write is precisely the shape the operation forbids. If it ever
+    passes, the suite has stopped measuring.
 
     Single-threaded it is indistinguishable from a correct store, which is the
     entire difficulty. It answers every question correctly when asked one at a
@@ -171,12 +171,11 @@ class RecyclingStore(MemoryStore):
     on delete -- and it costs every lease its fencing token: a stalled holder
     waking with version 1 is indistinguishable from the current holder.
 
-    It is not the version violator that matters most in production. Restoring
-    the store from backup replays lease versions, and a restore is an ordinary
-    recovery run by someone who believes they are restoring a database. That
-    path is a lifecycle event between store instances rather than one process
-    misbehaving, and this suite does not reach it. The gap is stated in
-    `README.md`.
+    It is not the likeliest way a version gets issued twice. Bringing a store
+    back from a backup can do it too, and that happens between two store
+    instances rather than inside one misbehaving process, so this suite does
+    not reach it. The README's section on the suite as the first piece of work
+    states that gap.
     """
 
     def _commit_locked(
@@ -221,12 +220,12 @@ class GlobalCounterStore(MemoryStore):
 
 
 class ClientExpiryStore(MemoryStore):
-    """Violates: `store-evaluated-expiry`. Asks the caller what time it is.
+    """Violates: `store-evaluated-expiry`. Takes the time from the caller.
 
-    The deadline is computed and compared against a clock on the caller's side
-    of the boundary. On one host with one clock this is invisible; across two it
-    is clock skew, and clock skew in a lease presents as the lease being held
-    twice -- by one holder whose clock says it still has it, and one whose clock
+    The deadline is computed from, and compared against, the caller's clock
+    rather than the store's. On one host with one clock this is invisible;
+    across two it is clock skew, and clock skew in a lease presents as the
+    lease being held twice -- by one holder whose clock says it still has it, and one whose clock
     says it is free.
     """
 
@@ -303,9 +302,9 @@ class FailOpenStore:
     A wrapper rather than a subclass, because that is where this defect actually
     lives: not in a store, but in the layer someone adds in front of one after a
     partition caused an outage and refusing looked like the bug. It is the exact
-    inversion of what makes a store in one place safe under partition: that
-    unreachable means refuse. A caller that fails open turns the store's
-    placement into a lost update.
+    inversion of what makes a store in one place safe under partition: a
+    store that cannot be reached is a refusal. A caller that fails open turns
+    the store's placement into a lost update.
     """
 
     def __init__(self, inner: Store) -> None:

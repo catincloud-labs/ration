@@ -2,7 +2,7 @@
 
 Written for the same reason `postgres.py` was: the contract names no store and
 leaves the choice downstream of the suite, so this module exists to be
-**judged**. It is imported only by the suite; nothing in `ration` depends on it.
+**judged**. Only the suite imports it; nothing in `ration` depends on it.
 
 ## Why this was written at all
 
@@ -10,12 +10,12 @@ A store qualifies by a conformance result, obtained by running the suite rather
 than by arguing from the store's documentation, and this module is what lets the
 suite run against DuckDB.
 
-**It is also the best available test of the suite itself.** Every violator in
-`src/ration/conformance/violators.py` is wrong *logically* -- it computes the wrong answer, and it
-is wrong in one process where the suite can see it. DuckDB is different in kind:
-it is capable of being **correct in one process and structurally unusable in
-two**, which is precisely the caveat `tests/test_postgres_cross_process.py` was
-built to remove. A backend that passes the in-process suite and cannot be
+**It is also the best available test of the suite itself.** The violators in
+`ration.conformance.violators` each compute an answer the contract forbids,
+inside a single process, in plain view of the suite. DuckDB is different in
+kind: it is capable of being **correct in one process and structurally
+unusable in two**, the very caveat the repository's cross-process Postgres
+test was built to remove. A backend that passes the in-process suite and cannot be
 deployed is the sharpest thing this repository can point at its own instruments.
 
 ## The module is not called `duckdb.py`
@@ -131,10 +131,10 @@ _CURRENT_VERSION = "SELECT version FROM ration_keys WHERE key = ?"
 class DuckDBStore:
     """The contract over one DuckDB file, with one cursor per calling thread.
 
-    **The store is a FILE, and one process owns it.** That is the whole of
-    what this backend is and the whole of what disqualifies it; see
-    `tests/test_duckdb_single_process.py`, which asserts the refusal rather than
-    describing it.
+    **The store is a FILE, owned by a single process.** That one fact is all
+    this backend is and all that disqualifies it; see
+    the repository's single-process DuckDB test, which asserts the refusal
+    rather than describing it.
 
     The cursor-per-thread is DuckDB's own documented pattern -- one connection,
     `connection.cursor()` per thread -- and is not the connection pooling
@@ -233,8 +233,8 @@ class DuckDBStore:
         can move again between the failed write and this read.
 
         So callers must not read either backend's `Conflict.version` as
-        current. The contract asks of it only that the key has held it,
-        deliberately, and two backends disagree about which held version in
+        current. The contract asks of it only that it be some version the key
+        once had, deliberately, and two backends disagree about which held version in
         different directions -- which is evidence that the contract was right
         to ask no more.
         """

@@ -1,9 +1,9 @@
-"""Property 4: an ambiguous write must be resolvable by reading.
+"""Property 4: a write whose answer never arrived can be settled by a read.
 
 A `compare_and_set` lost after transmission has an outcome the caller has not
-seen, not an outcome that does not exist. The contract's remedy is that values
-carry a caller-generated token, so the caller can re-read and learn which happened
-rather than guessing. Violated by `token-dropping`.
+seen, not an outcome that does not exist. The contract's remedy is a token the
+caller makes up and stores beside its value: reading the key back then says
+which outcome it was, with no guess involved. Violated by `token-dropping`.
 
 Both directions are exercised, and that is what stops a resolver which always
 answers the same way from looking correct. The direction that costs something is
@@ -14,11 +14,11 @@ a write it has already made.
 the key is created and never rewritten -- has a caller's token in the store only
 if the write under resolution put it there. That coincidence hides a real
 defect: a `resolve` that tests the token before the version is right for a
-caller writing a key once and wrong for one rewriting a key it already holds,
+caller writing a key once and wrong for a caller writing again a key it holds,
 because its token is already there from the earlier write.
 
-A conformance suite that decides whether a backend qualifies should not depend
-on a consumer's tests to defend the remedy it ships, so
+The suite that judges backends should not lean on a consumer's tests to
+defend the remedy it ships, so
 `test_a_rewriters_lost_answer_is_resolved` below reaches that case here.
 
 Measures: src/ration/contract.py, property 4
@@ -68,8 +68,8 @@ def test_a_rewriters_lost_answer_is_resolved(backend: BackendUnderTest) -> None:
     **The token identifies a writer, not a write.** Once a caller has written
     a key, its token is in the store regardless of what the *next* write did, so
     the token alone can no longer answer the question. Only the version can:
-    property 1 says every write advances it, so a key still standing at the
-    caller's expected version has not been written by anybody.
+    property 1 says every write advances it, so if the version is still the
+    one the caller expected, no write of anyone's has landed since.
 
     This is the case the rest of this file cannot reach, because everything else
     here creates a key rather than rewriting one.
