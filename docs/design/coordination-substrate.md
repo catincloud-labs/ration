@@ -146,41 +146,41 @@ is its **fencing token**.
 | A holder reacquiring under its own token is handed the grant it holds, not refused | `tests/test_lease.py::test_a_holder_reacquiring_its_own_grant_is_told_it_holds_it` |
 | Renewing moves the grant to a new version and spends the old one | `tests/test_lease.py::test_renewing_moves_the_grant_forward_and_spends_the_old_one` |
 | A holder whose key was taken cannot renew | `tests/test_lease.py::test_a_holder_that_lost_the_key_cannot_renew` |
-| Expiry alone does not break the chain: an expired grant nobody took still renews, because its version has not moved | `tests/test_lease.py::test_an_expired_grant_nobody_took_can_still_be_renewed` |
+| An expired grant that nobody has taken still renews: its version has not moved, so lapsing by itself ends nothing | `tests/test_lease.py::test_an_expired_grant_nobody_took_can_still_be_renewed` |
 | A released key, and an expired one, are free | `tests/test_lease.py::test_a_released_grant_is_free`, `tests/test_lease.py::test_an_expired_grant_is_free` |
 | Releasing a grant already lost does not disturb the new holder | `tests/test_lease.py::test_releasing_a_lost_grant_does_not_disturb_the_new_holder` |
 | An unreachable store grants nothing, and is not reported as a key that is taken | `tests/test_lease.py::test_an_unreachable_store_grants_nothing` |
 | An ambiguous grant or renew is recovered if it landed and not claimed if it did not | `tests/test_lease.py::test_an_ambiguous_grant_that_landed_is_recovered`, `tests/test_lease.py::test_an_ambiguous_grant_that_never_landed_is_not_claimed`, `tests/test_lease.py::test_an_ambiguous_renew_that_landed_is_recovered`, `tests/test_lease.py::test_an_ambiguous_renew_that_never_landed_is_not_claimed` |
 | An ambiguous release reports `False` rather than guessing | `tests/test_lease.py::test_an_ambiguous_release_gives_up_rather_than_guessing` |
 
-**What it refuses.** Waiting: a refusal is returned and the caller writes the
-loop. Retrying a conflict from `Conflict.version`, the one number the contract
-declines to promise. Distinguishing an applied ambiguous release from a key
-someone else took: both read the same, and the lease needs only that the
-caller no longer holds the key, so `release` claims the lesser answer.
+**What it refuses.** Waiting: a refused caller gets `None` and does any
+retrying itself. Retrying a conflict from `Conflict.version`, the one number
+the contract declines to promise. Telling an applied ambiguous release apart
+from a key someone else took: the two read the same, and `release` reports
+`False` for both.
 
 ## The pool: a bounded number of holders, refused rather than overdrawn
 
-`src/ration/pool.py`: a pool of N grants is N keys, each a lease, because the
-store expires keys rather than elements inside a value. Capacity is the
-number of keys and is written nowhere in the store. The pool adds one
-operation, a different way of choosing which key to take, and a read-only
-`holders` sample; it has no `renew` and no `release` of its own.
+`src/ration/pool.py`: a pool of N grants is N keys, each held as a lease; the
+module docstring gives the reason. Capacity is the number of keys and is
+written nowhere in the store. Beyond the lease, the pool supplies one thing,
+its own choice of which slot to take, and a read-only `holders` sample; it has
+no `renew` and no `release` of its own.
 
 | Guarantee | Shown by |
 | --- | --- |
 | A pool grants exactly its capacity, and the next claimant is refused: **refused rather than overdrawn** | `tests/test_pool.py::test_a_pool_grants_exactly_its_capacity` |
 | Under contention, no slot is held twice | `tests/test_pool.py::test_a_slot_is_never_held_twice_under_load`, with the negative control `tests/test_pool.py::test_a_non_atomic_store_grants_one_slot_to_two_holders` |
-| A holder retrying after a lost answer is handed the slot it already holds, even behind a free one, rather than a second slot | `tests/test_pool.py::test_a_holder_retrying_is_handed_the_slot_it_already_has`, `tests/test_pool.py::test_a_retry_finds_its_grant_behind_a_free_slot` |
+| A holder that retries because its answer was lost gets back the slot it already has, even when a free slot comes first in the scan, and not a second one | `tests/test_pool.py::test_a_holder_retrying_is_handed_the_slot_it_already_has`, `tests/test_pool.py::test_a_retry_finds_its_grant_behind_a_free_slot` |
 | A pool grant renews and releases as a lease, through `src/ration/lease.py` unchanged | `tests/test_pool.py::test_a_pool_grant_renews_and_releases_as_a_lease` |
 | A released slot, and an expired one, are granted again | `tests/test_pool.py::test_a_released_slot_is_granted_again`, `tests/test_pool.py::test_an_expired_slot_is_granted_again` |
 | An unreachable store grants no slot, and is not reported as a full pool | `tests/test_pool.py::test_an_unreachable_store_grants_no_slot` |
-| The scan's starting slot is a property of the holder, not of the interpreter that ran it | `tests/test_pool.py::test_the_rotation_does_not_depend_on_the_interpreter` |
+| Where the scan starts depends on the holder alone, and is the same in every interpreter | `tests/test_pool.py::test_the_rotation_does_not_depend_on_the_interpreter` |
 
-**What it refuses.** Waiting, for the lease's reason. Taking a slot freed
-behind the scan: it is missed until the next call, which over-refuses. A
-consistent count of a moving pool: `holders` reads slots one at a time and is a
-sample, not a snapshot.
+**What it refuses.** Waiting, as the lease refuses it. A slot that frees up
+behind the scan: it is not taken until a later call, so a call can refuse while
+a slot is free. An exact count while the pool is changing: `holders` reads each
+slot separately, so its answer need never have been true all at once.
 
 ## Addressing: where a role is, read from the lease that holds it
 
@@ -194,7 +194,7 @@ fencing token a callee can refuse.
 | A role resolves to the endpoint its holder announced, and to nothing when nobody holds it | `tests/test_addressing.py::test_a_role_resolves_to_where_its_holder_said_it_was`, `tests/test_addressing.py::test_a_role_nobody_holds_resolves_to_nothing` |
 | A held role is refused to a second announcer | `tests/test_addressing.py::test_a_second_holder_cannot_announce_a_held_role` |
 | A released role stops resolving and can move; an expired one stops resolving | `tests/test_addressing.py::test_a_released_role_stops_resolving_and_can_move`, `tests/test_addressing.py::test_an_expired_role_stops_resolving` |
-| The expiry assertions measure the store, not the passage of time: a deliberately caching resolver is required to keep answering for an expired role | `tests/test_addressing.py::test_a_caching_resolver_still_answers_for_an_expired_role` |
+| The expiry assertions measure the store, not the passage of time: a resolver that caches on purpose must still answer for an expired role | `tests/test_addressing.py::test_a_caching_resolver_still_answers_for_an_expired_role` |
 | The generation moves when the role does | `tests/test_addressing.py::test_the_generation_moves_when_the_role_does` |
 | An address must expire: `ttl` is required and must lie in the future | `tests/test_addressing.py::test_an_address_without_a_future_expiry_is_refused` |
 | An empty role or endpoint is refused, and so is a role key passed as a role name | `tests/test_addressing.py::test_a_role_without_a_name_or_an_endpoint_is_refused`, `tests/test_addressing.py::test_a_role_key_is_refused_as_a_role_name` |
@@ -210,8 +210,8 @@ partition.
 
 `src/ration/publish.py`: a topic is one key under the `topic/` prefix holding a
 pointer to an artefact, and its generation is the store's version for that
-key. The artefact is an opaque reference, never parsed; content-named bytes are
-immutable and need no coordination.
+key. The artefact is an opaque reference the module never parses, and nothing
+about the artefact itself is coordinated.
 
 | Guarantee | Shown by |
 | --- | --- |
@@ -220,19 +220,19 @@ immutable and need no coordination.
 | Advancing spends the generation it advanced from, and a stalled publisher cannot overwrite a newer publication | `tests/test_publish.py::test_advancing_spends_the_generation_it_advanced_from`, `tests/test_publish.py::test_a_stalled_publisher_cannot_overwrite_a_newer_publication` |
 | A reader can advance from the generation it read | `tests/test_publish.py::test_a_reader_can_advance_from_the_generation_it_read` |
 | A publication does not expire: it stands across a clock advance that expires a leased address in the same store | `tests/test_publish.py::test_a_publication_outlives_what_an_address_does_not` |
-| An unreachable store publishes nothing, and does not read as a topic never published | `tests/test_publish.py::test_an_unreachable_store_publishes_nothing_and_reads_as_nothing_either` |
+| An unreachable store publishes nothing, and is not mistaken for a topic with no publication | `tests/test_publish.py::test_an_unreachable_store_publishes_nothing_and_reads_as_nothing_either` |
 | An ambiguous first publication or advance is recovered if it landed, carrying the new artefact, and not claimed if it did not | `tests/test_publish.py::test_an_ambiguous_first_publication_that_landed_is_recovered`, `tests/test_publish.py::test_an_ambiguous_first_publication_that_never_landed_is_not_claimed`, `tests/test_publish.py::test_an_ambiguous_advance_that_landed_carries_the_new_artefact`, `tests/test_publish.py::test_an_ambiguous_advance_that_never_landed_is_not_claimed` |
-| An ambiguous republish of the artefact already standing is not claimed, decided by the unmoved version alone | `tests/test_publish.py::test_an_ambiguous_republish_of_the_standing_artefact_is_not_claimed` |
+| An ambiguous republish of the current artefact is not claimed, decided by the unmoved version alone | `tests/test_publish.py::test_an_ambiguous_republish_of_the_standing_artefact_is_not_claimed` |
 | A publisher racing itself is not handed an artefact it did not publish, decided by the payload | `tests/test_publish.py::test_a_publisher_racing_itself_is_not_handed_an_artefact_it_did_not_publish` |
 | An empty topic or artefact is refused, and so is a topic key passed as a topic name | `tests/test_publish.py::test_a_topic_without_a_name_or_an_artefact_is_refused`, `tests/test_publish.py::test_a_topic_key_is_refused_as_a_topic_name` |
 | Under contention, no publication is silently destroyed | `tests/test_publish.py::test_no_publication_is_silently_destroyed_under_load`, with the negative control `tests/test_publish.py::test_a_non_atomic_store_advances_twice_from_one_generation` |
 
-**What it refuses.** A TTL: `publish` has no parameter for one. A retract: a
-publication is superseded, never deleted. Retrying a refused advance: the
-caller reads `current` and decides. A watch: consumers poll, so staleness is
-detectable, not pushed. Two keys moving together, such as an artefact and its
-index: that is a guarantee the contract refuses, and providing it would change
-the contract.
+**What it refuses.** A TTL: `publish` has no parameter for one. A retract:
+nothing deletes a topic, and a newer publication replaces an older one.
+Retrying a refused advance: the caller reads `current` and decides. A watch:
+consumers poll, and a stale pointer is found by reading, not announced. Two
+keys moving together, such as an artefact and its index: the contract offers
+no such operation.
 
 ## The frame: a checked carrier, with no state of its own
 

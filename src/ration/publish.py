@@ -10,9 +10,9 @@ rather than a guess, and the generation doubles as the fencing token: a
 publisher that stalled past its moment still advances from the generation it
 last saw, and a store that has moved on refuses it.
 
-**Why it lives in this repository.** The code is decomposed by state
-ownership -- the substrate and the services share a repository because they own
-the same state -- and the pointer, which generation is current, is a single key
+**Why it lives in this repository.** Pieces are grouped by the state each one
+owns, and the substrate travels with its services because their state is the
+same state. The pointer, which generation is current, is a single key
 under compare-and-set with a monotonic version. In state-ownership terms that is
 indistinguishable from a lease: same store, same key shape, same refusal.
 
@@ -22,9 +22,9 @@ immutable, and immutable data has nothing to coordinate. Lockfile and
 atomic-swap machinery exist only because an artefact mutates in place; without
 that, the whole coordination problem collapses onto the pointer. So `artefact`
 below is an opaque reference this module never parses, exactly
-the stance `addressing.py` takes toward an endpoint: the moment it has an
-opinion about the format, it has an opinion about the artefact store, which is
-the producer's concern.
+the stance `addressing.py` takes toward an endpoint: a module that read the
+format would be taking a view on the artefact store, and that store is the
+producer's concern.
 
 ## Not a lease, and the differences are the design
 
@@ -38,11 +38,11 @@ signature: the property is structural, so there is no argument to pass wrong.
 
 **There is no retract.** A publication is superseded, never deleted. That is
 not only scope discipline: `lease.py` records that property 4's remedy reaches
-a deletion only half way -- an applied delete and a key taken by somebody else
-read identically -- and that this is a real edge for any consumer that needs
-the distinction. This consumer keeps that edge dormant the same way the lease
-does: nothing here deletes, so every ambiguous write it can suffer is one
-`resolve` fully decides.
+a deletion only half way -- a delete that applied cannot be told from a key
+taken by somebody else -- and that this is a real edge for any consumer that
+needs the distinction. This consumer keeps that edge dormant the same way the
+lease does: nothing here deletes, so every ambiguous write it can suffer is
+one `resolve` fully decides.
 
 **The first publication is not a special case.** Absence is a version
 (`UNPUBLISHED`, the contract's `ABSENT`), so creating a topic is advancing it,
@@ -54,8 +54,8 @@ the same reason no artefact lock is.
 
 **A publisher is its own predecessor as the routine case, not the edge.**
 Every advance rewrites a key that already holds this publisher's token, so an
-ambiguous advance is exactly the case `resolve` tests the version before the
-token for. The lease meets it only on renew; here it is
+ambiguous advance is exactly the case for which `resolve` reads the version
+ahead of the token. The lease meets it only on renew; here it is
 every write after the first. And it is one notch sharper: the token identifies
 a *writer*, and a publisher rewrites its key with **different payloads**, so
 after `resolve` says our write applied, the follow-up read checks the artefact
@@ -68,13 +68,13 @@ are.
 
 **And there is a case neither token nor artefact can decide.** A recovery
 built purely on the follow-up read passes every test in which the lost write
-would have left something distinguishable in the store. An ambiguous
-**republish of the artefact already standing** leaves nothing distinguishable
--- same token, same payload -- and the only witness that the write never landed
-is the version not having moved, which is `resolve`'s NOT_APPLIED doing the
-deciding on its own. `tests/test_publish.py` pins that case, and it is what
-holds the recovery order here -- verdict first, then the follow-up read -- in
-place.
+would have left something distinguishable in the store. **Republishing the
+artefact that already stands**, with the answer lost, leaves nothing to tell
+apart -- same token, same payload -- and the only witness that the write
+never landed is the version not having moved, which is `resolve`'s
+NOT_APPLIED doing the deciding on its own. `tests/test_publish.py` pins that
+case, and it is what holds the recovery order here -- verdict first, then the
+follow-up read -- in place.
 
 **Consumers poll, and that is the contract's refusal surfacing here.** The
 contract offers no watch, so "has the pointer moved?" is a read and a
@@ -183,8 +183,8 @@ def publish(
     meanwhile is a question about the artefacts, and only the caller can answer
     it -- so the move after a `None` is `current`, then a decision, not a loop.
     Retrying from the conflict's own version is also off the table for the
-    contract's stated reason: that field is a version the key *has held*, not a
-    promise about its current one.
+    contract's stated reason: that field names some version the key *held at
+    some point*, and promises nothing about its current one.
 
     `Unreachable` is **not caught**, for `lease.acquire`'s reason: a store that
     is gone must not read as a publication that was refused.

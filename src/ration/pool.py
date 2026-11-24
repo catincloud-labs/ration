@@ -1,11 +1,11 @@
 """A pool: a bounded number of simultaneous grants over a finite set of slots.
 
-**A pool of N grants cannot live on one key, because expiry is evaluated by
-the store and the store expires keys rather than elements inside a value.**
+**A pool of N grants cannot live on one key, because it is the store that
+judges expiry, and it judges whole keys, never entries inside a value.**
 `compare_and_set` takes one `ttl` for one key. A single key holding a table of
 grants with their own deadlines would have to have those deadlines evaluated by
 whoever read it -- which is `client-expiry`, a violator the suite rejects. So
-**a pool is N keys, each one a lease from `lease.py`.**
+**each of the N slots is its own key, held as a lease from `lease.py`.**
 
 **The strongest evidence for that design is what is not in this file.** There
 is no `renew` here and no `release`. A pool grant *is* a lease, so
@@ -17,13 +17,14 @@ contract, and this one needs none.
 
 ## What this consumer found, and it is not in the contract
 
-**A holder retrying after a lost answer will take a *second* slot unless the
-scan looks for its own grant first, and that is new here.** `lease.acquire` is
-idempotent for a holder reusing its identity, and it gets that for free: there
-is one key, so the read that decides whether the key is free is the same read
-that recognises the holder's own token. A pool has no such luck. The natural
-implementation -- walk the slots, compare-and-set the first free one -- cannot
-see that this holder already holds slot 3 while it is busy taking slot 0.
+**A holder retrying after a lost answer will take a *second* slot if the scan
+does not first check whether it holds one already, and that is new here.**
+`lease.acquire` is idempotent for a holder reusing its identity, and it gets
+that for free: there is one key, so the read that decides whether the key is
+free is the same read that recognises the holder's own token. A pool has no
+such luck. The natural implementation -- walk the slots, compare-and-set the
+first free one -- cannot see that this holder already holds slot 3 while it is
+busy taking slot 0.
 
 **This is not overdraw of the pool.** Capacity is still respected; N slots
 grant N times whatever happens. What leaks is the *handle*: a holder whose grant

@@ -1,36 +1,36 @@
 """Where a role is, answered by the lease that already says who holds it.
 
-A role must not be pinned to a host by accident, and a caller that reaches a
-service by hostname has done exactly that. So services address each other by
-**role** and something resolves the role to a host. This module is that
-something, and it is thin on purpose.
+Reaching a service through its hostname quietly ties that service's role to
+one machine. Services here find each other by **role** instead, and a role has
+to be turned into a host somewhere. This module does the turning, and it is
+kept thin deliberately.
 
-**It introduces no new state, which is why it lives here rather than in a
-repository of its own.** The code is decomposed by state ownership -- the
-substrate and the services share a repository because they own the same state
--- and the fact "who holds this role right now" is *already* lease state.
-Addressing is a **reading** of it. The address is carried as the lease's own
-payload, so a role is announced and held in one operation and there is nothing
-to keep in step.
+**It adds no state of its own, so it sits in this repository instead of a
+separate one.** Pieces are grouped by the state each one owns, and the
+substrate travels with its services because their state is the same state.
+Which holder has a role at this moment is *already* recorded by the lease, so
+addressing is only a **reading** of that record. The endpoint rides as the
+lease payload: claiming a role and saying where it is happen in a single
+write, and no second record exists to drift.
 
-**The alternative was to publish the address into the network's name service
-and let callers resolve by DNS.** It loses for a reason that is not new: the
-lease already decides who holds a role, so a name record is a *second copy of
-that fact*, and it goes stale in exactly the moment that matters -- a failover.
-Two copies of a fact is one fact and one stale claim. It also has no fencing
-token, which is the concrete form of the same objection: a cached name keeps
-answering for a holder whose lease has moved on, and the caller cannot tell.
+**The rejected design wrote the address into the network's name service and
+had callers look it up through DNS.** That fails for an old reason. The lease
+already settles which process holds a role, so a name record would hold
+*that fact twice over*, and a duplicate falls behind at the worst instant there
+is -- a failover. Two copies of a fact is one fact and one stale claim. A name
+record also carries no fencing token, which is the same objection made
+concrete: a cached name goes on pointing at a holder whose lease has passed to
+someone else, and the caller has no way to notice.
 
-So the network is still what carries the packets. It is the transport; it is
-not the register of who holds what. Those are different jobs and only one of
-them is coordination.
+The network still carries the packets. It is the transport, not a ledger of
+who holds what; those are separate jobs, and coordination is the second one.
 
-**What this costs, stated because it is real.** Service addressing depends on
-the coordination store being reachable. The store refuses under partition, so a
-peer that cannot reach it could already take no lease; it now also cannot
-resolve a role. That widens the blast radius of a failure the lease layer
-already accepts rather than introducing a new one -- but it does widen it, and a
-reader should be told that rather than left to notice.
+**The cost, written down because it exists.** Resolving a service now needs
+the coordination store to be reachable. The store refuses under partition, so
+a peer cut off from it could already take no lease; now it cannot resolve a
+role either. That enlarges the reach of a failure the lease layer already
+accepts instead of adding a new kind -- but it is an enlargement all the same,
+and it is stated here so nobody has to find it out.
 """
 
 from __future__ import annotations
@@ -114,8 +114,8 @@ def resolve(store: Store, role: str) -> Address | None:
 
     **Every call reads the store. There is no cache here and adding one would
     reintroduce the defect this module exists to avoid** -- see the module
-    docstring, and `tests/test_addressing.py`, where a deliberately caching
-    resolver is required to answer for a role that has expired.
+    docstring, and `tests/test_addressing.py`, where a resolver that does cache
+    must go on answering for a role whose lease has run out.
 
     Expiry is not evaluated here. The contract's property 2 puts it in the
     store, so an expired role arrives as an absent record and this function
